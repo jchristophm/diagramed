@@ -17,3 +17,16 @@ test('object creation is atomic, editable and persistent', async ({page}) => {
   await page.reload();await page.locator('#file-input').setInputFiles({name:'saved.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(changed))});await expect(page.locator('#status')).toContainText('Opened');expect(await save(page)).toEqual(changed);
   expect(await page.locator('[data-action="addArrow"]').count()).toBe(0);expect(errors).toEqual([]);
 });
+test('collection includes Earth and retains hidden appearance', async ({page},info)=>{
+ await page.goto('./');
+ await page.getByTitle('Object',{exact:true}).click();await page.locator('#object-name').fill('Table');await page.locator('#object-representation').selectOption('rectangle');await page.getByRole('button',{name:'Create object',exact:true}).click();await expect(page.locator('#object-dialog')).not.toBeVisible();
+ const original=await save(page),g=original.presentation.elements[0];
+ await page.getByTitle('Objects',{exact:true}).click();await page.getByRole('button',{name:'Hide Table',exact:true}).click();await expect(page.getByRole('button',{name:'Show Table',exact:true})).toBeVisible();await page.getByRole('button',{name:'Close',exact:true}).click();
+ expect((await save(page)).presentation.elements[0]).toEqual({...g,visible:false});
+ await page.getByTitle('Objects',{exact:true}).click();await page.getByRole('button',{name:'Show Table',exact:true}).click();await page.getByRole('button',{name:'Close',exact:true}).click();expect((await save(page)).presentation.elements[0]).toEqual(g);
+ await page.getByTitle('Object',{exact:true}).click();await page.locator('#object-preset').selectOption('earth');await expect(page.locator('#object-name')).toHaveValue('Earth');await expect(page.locator('#object-representation')).toHaveValue('none');await page.getByRole('button',{name:'Create object',exact:true}).click();await expect(page.locator('#object-dialog')).not.toBeVisible();
+ const withEarth=await save(page);expect(withEarth.semantics.objects).toHaveLength(2);expect(withEarth.semantics.variables).toHaveLength(0);expect(withEarth.presentation.elements[1].visible).toBe(false);
+ await page.getByTitle('Objects',{exact:true}).click();await expect(page.getByRole('button',{name:'Select Earth',exact:true})).toBeVisible();await page.getByRole('button',{name:'Edit Earth',exact:true}).click();await page.locator('#object-name').fill('Earth model');await page.getByRole('button',{name:'Save object',exact:true}).click();await expect(page.locator('#object-dialog')).not.toBeVisible();
+ await page.getByTitle('Objects',{exact:true}).click();await page.getByRole('button',{name:'Delete Earth model',exact:true}).click();await expect(page.getByRole('button',{name:'Select Earth model',exact:true})).toHaveCount(0);await page.getByRole('button',{name:'Close',exact:true}).click();
+ expect((await save(page)).semantics.objects).toHaveLength(1);await page.screenshot({path:`test-results/phase2-${info.project.name}.png`});
+});

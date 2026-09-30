@@ -1,6 +1,7 @@
 import Konva from 'konva';
 import { DocumentStore, type DiagramDocument, type Graphic } from './model';
 import { renderMath } from './math';
+import { attachmentPoint } from './geometry';
 export class DiagramRenderer {
   readonly stage: Konva.Stage;
   private grid = new Konva.Layer({ listening: false });
@@ -8,8 +9,14 @@ export class DiagramRenderer {
   private controls = new Konva.Layer();
   private transformer = new Konva.Transformer({ rotateEnabled: true, ignoreStroke: true, padding: 4, anchorSize: 12 });
   private nodes = new Map<string, Konva.Shape>();
+  private labels = new Map<string, Konva.Group>();
   selectedId: string | null = null;
   onEdit: (element: Graphic) => void = () => {};
+  onSelect: (element: Graphic | null) => void = () => {};
+  private symbols(e: Graphic, doc = this.store.document) {
+    const object = doc.semantics.objects.find(o => o.id === e.semanticId);
+    return Object.values(object?.properties || {}).map(id => doc.semantics.variables.find(v => v.id === id)?.symbol).filter(Boolean).join(',\\; ');
+  }
   constructor(private store: DocumentStore, private container: HTMLDivElement) {
     this.stage = new Konva.Stage({ container, width: 800, height: 600 });
     this.stage.add(this.grid, this.layer, this.controls);
@@ -26,10 +33,11 @@ export class DiagramRenderer {
   }
   async prepare(doc: DiagramDocument) {
     await Promise.all(doc.presentation.elements.filter(e => e.kind === 'latex').map(e => renderMath(e.latex, e.fontSize)));
+    await Promise.all(doc.presentation.elements.filter(e => e.semanticId && e.visible !== false && e.label?.showProperties && this.symbols(e, doc)).map(e => renderMath(this.symbols(e, doc), 16)));
   }
   async render() {
     await this.prepare(this.store.document);
-    this.select(null); this.layer.destroyChildren(); this.nodes.clear(); this.grid.destroyChildren();
+    this.select(null); this.layer.destroyChildren(); this.nodes.clear(); this.labels.clear(); this.grid.destroyChildren();
     const { canvas, grid, elements } = this.store.document.presentation;
     for (let x = 0; x < canvas.width; x += grid.size) this.grid.add(new Konva.Line({ points: [x, 0, x, canvas.height], stroke: '#eee', strokeWidth: 1 }));
     for (let y = 0; y < canvas.height; y += grid.size) this.grid.add(new Konva.Line({ points: [0, y, canvas.width, y], stroke: '#eee', strokeWidth: 1 }));
@@ -48,15 +56,38 @@ export class DiagramRenderer {
     else if (e.kind === 'text') node = new Konva.Text({ ...base, strokeWidth: 0, stroke: undefined, text: e.text, fontSize: e.fontSize, fontFamily: e.fontFamily });
     else { const image = await renderMath(e.latex, e.fontSize); node = new Konva.Image({ ...base, fill: undefined, stroke: undefined, strokeWidth: 0, image, width: image.width / 2, height: image.height / 2 }); }
     this.nodes.set(e.id, node); this.layer.add(node);
+    if (e.semanticId) await this.addLabel(e);
     node.on('click tap', () => this.select(e.id));
     node.on('dblclick dbltap', () => { if (e.semanticId || e.kind === 'text' || e.kind === 'latex') this.onEdit(this.element(e.id)!); });
-    node.on('dragmove', () => { node.position({ x: this.snap(node.x()), y: this.snap(node.y()) }); });
+    node.on('dragmove', () => { node.position({ x: this.snap(node.x()), y: this.snap(node.y()) }); this.positionLabel(e.id); });
     node.on('dragend', () => { this.store.update(e.id, { x: node.x(), y: node.y() }); this.select(e.id); });
     node.on('transformend', () => {
       const patch = { x: this.snap(node.x()), y: this.snap(node.y()), rotation: node.rotation(), scaleX: node.scaleX(), scaleY: node.scaleY() };
-      node.position({ x: patch.x, y: patch.y }); this.store.update(e.id, patch); this.select(e.id);
+      node.position({ x: patch.x, y: patch.y }); this.store.update(e.id, patch); this.positionLabel(e.id); this.select(e.id);
     });
+    node.on('transform', () => this.positionLabel(e.id));
     this.layer.draw();
+  }
+  private currentGraphic(id: string): Graphic {
+    const e = this.element(id)!, node = this.nodes.get(id)!;
+    return { ...e, x: node.x(), y: node.y(), rotation: node.rotation(), scaleX: node.scaleX(), scaleY: node.scaleY() };
+  }
+  private positionLabel(id: string) {
+    const e = this.element(id), label = this.labels.get(id); if (!e || !label) return;
+    const center = attachmentPoint(this.currentGraphic(id));
+    label.position({ x: center.x + (e.label?.offsetX ?? 24), y: center.y + (e.label?.offsetY ?? 24) });
+  }
+  private async addLabel(e: Graphic) {
+    const object = this.store.document.semantics.objects.find(o => o.id === e.semanticId);
+    if (!object || !e.label || (!e.label.showName && !e.label.showProperties)) return;
+    const group = new Konva.Group({ draggable: true });
+    if (e.label.showName) group.add(new Konva.Text({ text: object.name, fontSize: 16, fontFamily: 'Arial', fill: '#222', hitStrokeWidth: 8 }));
+    const symbols = this.symbols(e);
+    if (e.label.showProperties && symbols) { const image = await renderMath(symbols, 16); group.add(new Konva.Image({ image, width: image.width / 2, height: image.height / 2, y: e.label.showName ? 22 : 0 })); }
+    this.labels.set(e.id, group); this.layer.add(group); this.positionLabel(e.id);
+    group.on('click tap', () => this.select(e.id));
+    group.on('dblclick dbltap', () => this.onEdit(this.element(e.id)!));
+    group.on('dragend', () => { const current = this.element(e.id)!; const center = attachmentPoint(this.currentGraphic(e.id)); this.store.update(e.id, { label: { ...current.label!, offsetX: group.x() - center.x, offsetY: group.y() - center.y } }); this.select(e.id); });
   }
   private element(id: string) { return this.store.document.presentation.elements.find(e => e.id === id); }
   select(id: string | null) {
@@ -64,6 +95,7 @@ export class DiagramRenderer {
     if (old) { const e = this.element(this.selectedId!); if (e && !['text', 'latex'].includes(e.kind)) old.stroke(e.stroke); old.draggable(true); }
     this.controls.destroyChildren(); this.transformer = new Konva.Transformer({ rotateEnabled: true, ignoreStroke: true, padding: 4, anchorSize: 12 }); this.controls.add(this.transformer);
     this.selectedId = id;
+    this.onSelect(id ? this.element(id) || null : null);
     if (!id) { this.stage.batchDraw(); return; }
     const e = this.element(id), node = this.nodes.get(id);
     if (!e || !node) return;
@@ -87,6 +119,6 @@ export class DiagramRenderer {
     } else if (e.kind === 'point') { node.stroke('orange'); } else { if (e.kind !== 'text' && e.kind !== 'latex') node.stroke('orange'); this.transformer.nodes([node]); }
     this.stage.batchDraw();
   }
-  deleteSelected() { if (this.selectedId) { const id = this.selectedId; this.select(null); this.nodes.get(id)?.destroy(); this.nodes.delete(id); this.store.remove(id); this.stage.draw(); } }
+  deleteSelected() { if (this.selectedId) { const id = this.selectedId; if (this.element(id)?.semanticId) throw new Error('Semantic objects must be deleted through the object operations.'); this.select(null); this.nodes.get(id)?.destroy(); this.labels.get(id)?.destroy(); this.nodes.delete(id); this.labels.delete(id); this.store.remove(id); this.stage.draw(); } }
   toggleGrid() { const p = this.store.document.presentation; p.grid.visible = !p.grid.visible; this.grid.visible(p.grid.visible); this.store.changed(); this.stage.draw(); }
 }

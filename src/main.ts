@@ -3,7 +3,7 @@ import { showPropertyFields, readPropertyFields } from './property-form';
 import { DocumentStore, newDocument, type Graphic } from './model';
 import { DiagramRenderer } from './renderer';
 import { parseDocument, downloadDocument } from './persistence';
-import { saveObject, deleteObject, objectDraft, objectGraphic, type Representation } from './objects';
+import { saveObject, deleteObject, objectDraft, objectGraphic, setObjectVisibility, objectPresets, type Representation } from './objects';
 const $ = <T extends HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
 const container = $<HTMLDivElement>('#container');
 const store = new DocumentStore(newDocument(container.clientWidth || 800, container.clientHeight || 600));
@@ -14,9 +14,14 @@ let selectedObjectId: string | undefined;
 let legacy: Graphic | undefined;
 let busy = false;
 function report(error: unknown) { status.textContent = error instanceof Error ? error.message : String(error); }
-function selectedObject() { return store.document.presentation.elements.find(e => e.id === renderer.selectedId)?.semanticId || selectedObjectId; }
+function selectedObject() { return renderer.selectedId ? store.document.presentation.elements.find(e => e.id === renderer.selectedId)?.semanticId : selectedObjectId; }
+function updateSelectionName() { $('#selected-name').textContent = store.document.semantics.objects.find(o => o.id === selectedObjectId)?.name || ''; }
+renderer.onSelect = element => { selectedObjectId = element?.semanticId; updateSelectionName(); };
+function selectObject(id: string) { const g = objectGraphic(store, id); renderer.select(g && g.visible !== false ? g.id : null); selectedObjectId = id; updateSelectionName(); }
 function openObject(id?: string) {
   editingId = id;
+  $<HTMLSelectElement>('#object-preset').value = 'custom';
+  $<HTMLSelectElement>('#object-preset').disabled = !!id;
   const draft = objectDraft(store, id);
   $<HTMLInputElement>('#object-name').value = draft.name;
   $<HTMLSelectElement>('#object-representation').value = draft.representation;
@@ -32,10 +37,32 @@ $('#cancel-object').addEventListener('click', () => dialog.close());
 $('#object-form').addEventListener('submit', async event => {
   event.preventDefault(); if (busy) return; busy = true;
   try {
-    selectedObjectId = saveObject(store, { id: editingId, name: $<HTMLInputElement>('#object-name').value, representation: $<HTMLSelectElement>('#object-representation').value as Representation, showName: $<HTMLInputElement>('#show-name').checked, showProperties: $<HTMLInputElement>('#show-properties').checked, properties: readPropertyFields($('#property-fields')) });
-    await renderer.render(); renderer.select(objectGraphic(store, selectedObjectId)?.id || null); dialog.close();
+    const id = saveObject(store, { id: editingId, name: $<HTMLInputElement>('#object-name').value, representation: $<HTMLSelectElement>('#object-representation').value as Representation, showName: $<HTMLInputElement>('#show-name').checked, showProperties: $<HTMLInputElement>('#show-properties').checked, properties: readPropertyFields($('#property-fields')) });
+    await renderer.render(); selectObject(id); dialog.close();
   } catch (error) { $('#object-error').textContent = error instanceof Error ? error.message : String(error); } finally { busy = false; }
 });
+$<HTMLSelectElement>('#object-preset').addEventListener('change', event => {
+  const preset = objectPresets.find(p => p.key === (event.target as HTMLSelectElement).value);
+  if (preset) { $<HTMLInputElement>('#object-name').value = preset.name; $<HTMLSelectElement>('#object-representation').value = preset.representation; showPropertyFields($('#property-fields')); }
+});
+function showCollection() {
+  const host = $('#object-list'); host.replaceChildren();
+  if (!store.document.semantics.objects.length) { const empty=document.createElement('p');empty.textContent='No objects yet. Use Object to define one.';host.append(empty); }
+  for (const object of store.document.semantics.objects) {
+    const row = document.createElement('div'); row.className='object-row'; row.dataset.objectId=object.id;
+    const graphic = objectGraphic(store, object.id), visible = !!graphic && graphic.visible !== false;
+    const name = document.createElement('button'); name.className='object-name'; name.textContent=object.name; name.title=`Select ${object.name}`; name.setAttribute('aria-label',`Select ${object.name}`);
+    name.addEventListener('click', () => { selectObject(object.id); $<HTMLDialogElement>('#collection-dialog').close(); status.textContent = visible ? `Selected ${object.name}` : `Selected hidden object: ${object.name}`; });
+    const visibility=document.createElement('button');visibility.textContent=visible ? 'Hide' : 'Show';visibility.setAttribute('aria-label',`${visible ? 'Hide' : 'Show'} ${object.name}`);
+    visibility.addEventListener('click',async()=>{if(busy)return;busy=true;try{setObjectVisibility(store,object.id,!visible);await renderer.render();selectObject(object.id);showCollection();}catch(error){report(error);}finally{busy=false;}});
+    const edit=document.createElement('button');edit.textContent='Edit';edit.setAttribute('aria-label',`Edit ${object.name}`);edit.addEventListener('click',()=>{$<HTMLDialogElement>('#collection-dialog').close();selectObject(object.id);openObject(object.id);});
+    const remove=document.createElement('button');remove.textContent='Delete';remove.setAttribute('aria-label',`Delete ${object.name}`);remove.addEventListener('click',async()=>{if(busy)return;busy=true;try{deleteObject(store,object.id);await renderer.render();showCollection();}catch(error){report(error);}finally{busy=false;}});
+    const state=document.createElement('span');state.className='object-state';state.textContent=visible ? 'Visible' : 'Hidden';
+    row.append(name,state,visibility,edit,remove);host.append(row);
+  }
+  const collection=$<HTMLDialogElement>('#collection-dialog');if(!collection.open)collection.showModal();
+}
+$('#close-collection').addEventListener('click',()=> $<HTMLDialogElement>('#collection-dialog').close());
 renderer.onEdit = element => {
   if (element.semanticId) { selectedObjectId = element.semanticId; openObject(element.semanticId); return; }
   legacy = structuredClone(element); $<HTMLTextAreaElement>('#legacy-input').value = element.kind === 'latex' ? element.latex : element.text;
@@ -58,6 +85,7 @@ async function action(name: string) {
   if (busy) return; status.textContent = '';
   try {
     if (name === 'object') openObject();
+    else if (name === 'collection') showCollection();
     else if (name === 'edit') { const id = selectedObject(); if (id) openObject(id); else report('Select an object to edit its definition.'); }
     else if (name === 'grid') renderer.toggleGrid();
     else if (name === 'delete') await removeSelected();

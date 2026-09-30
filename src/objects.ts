@@ -9,6 +9,12 @@ export const propertyDefinitions = {
 export interface PropertyDraft { symbol: string; state: 'known' | 'unknown'; unit: string; value?: number }
 export function canonicalSymbol(symbol: string) { return symbol.trim().replace(/\s|[{}]/g, ''); }
 export type Representation = 'circle' | 'rectangle' | 'point' | 'none';
+export const objectPresets = [{ key: 'earth', name: 'Earth', representation: 'none' as Representation }];
+export function setObjectVisibility(store: DocumentStore, id: string, visible: boolean) {
+  const graphic = objectGraphic(store, id);
+  if (!graphic) throw new Error('This object has no saved graphical configuration. Edit its definition to choose a representation.');
+  store.update(graphic.id, { visible });
+}
 export interface ObjectDraft { id?: string; name: string; representation: Representation; showName: boolean; showProperties: boolean; properties?: Partial<Record<PropertyQuantity, PropertyDraft>> }
 export function objectGraphic(store: DocumentStore, id: string) { return store.document.presentation.elements.find(e => e.semanticId === id); }
 export function saveObject(store: DocumentStore, draft: ObjectDraft): string {
@@ -55,6 +61,7 @@ export function saveObject(store: DocumentStore, draft: ObjectDraft): string {
   }
   if (draft.representation !== 'none' && draft.representation !== graphic.kind) {
     const center = attachmentPoint(graphic); graphic.kind = draft.representation;
+    if (graphic.kind === 'circle' && graphic.radius < 10) graphic.radius = 20;
     graphic.scaleX = 1; graphic.scaleY = 1; graphic.rotation = 0;
     graphic.x = center.x - (graphic.kind === 'rectangle' ? graphic.width / 2 : 0);
     graphic.y = center.y - (graphic.kind === 'rectangle' ? graphic.height / 2 : 0);

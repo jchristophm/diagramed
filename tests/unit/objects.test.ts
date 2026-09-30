@@ -1,8 +1,17 @@
 import { describe,it,expect } from 'vitest';
 import { DocumentStore } from '../../src/model';
-import { saveObject,objectDraft,objectGraphic,deleteObject } from '../../src/objects';
+import { saveObject,objectDraft,objectGraphic,deleteObject,setObjectVisibility } from '../../src/objects';
 import { attachmentPoint } from '../../src/geometry';
 describe('semantic object operations',()=>{
+ it('hiding and showing preserves transformed configuration and label offsets',()=>{
+ const store=new DocumentStore(),id=saveObject(store,{name:'Table',representation:'rectangle',showName:true,showProperties:false});const g=objectGraphic(store,id)!;
+ store.update(g.id,{x:80,y:160,scaleX:4,scaleY:.5,rotation:30,label:{showName:true,showProperties:false,offsetX:11,offsetY:-28}});const before=structuredClone(objectGraphic(store,id));
+ setObjectVisibility(store,id,false);setObjectVisibility(store,id,true);expect(objectGraphic(store,id)).toEqual(before);
+ const center=attachmentPoint(objectGraphic(store,id)!);expect(center.x).toBeCloseTo(80+80*Math.cos(Math.PI/6)-10*Math.sin(Math.PI/6));
+ });
+ it('refuses deletion while future semantic relationships depend on an object',()=>{
+ const store=new DocumentStore(),id=saveObject(store,{name:'Rock',representation:'circle',showName:true,showProperties:true});store.document.semantics.interactions.push({id:'interaction',kind:'contact',objectIds:[id]});const before=structuredClone(store.document);expect(()=>deleteObject(store,id)).toThrow(/dependent/);expect(store.document).toEqual(before);
+ });
  it('unknown and known properties have stable variable references; undefined is absent',()=>{
  const store=new DocumentStore();const id=saveObject(store,{name:'Rock',representation:'circle',showName:true,showProperties:true,properties:{mass:{symbol:'m_2',state:'unknown',unit:'kg'}}});
  const variableId=store.document.semantics.objects[0].properties!.mass;
