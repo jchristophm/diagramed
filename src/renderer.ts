@@ -38,17 +38,18 @@ export class DiagramRenderer {
     this.fit(); this.stage.draw();
   }
   async addNode(e: Graphic) {
+    if (e.visible === false) return;
     const base = { id: e.id, x: e.x, y: e.y, rotation: e.rotation, scaleX: e.scaleX, scaleY: e.scaleY, stroke: e.stroke, strokeWidth: e.strokeWidth, fill: e.fill, draggable: true };
     let node: Konva.Shape;
     if (e.kind === 'rectangle') node = new Konva.Rect({ ...base, width: e.width, height: e.height });
-    else if (e.kind === 'circle') node = new Konva.Circle({ ...base, radius: e.radius });
+    else if (e.kind === 'circle' || e.kind === 'point') node = new Konva.Circle({ ...base, radius: e.radius, hitStrokeWidth: e.kind === 'point' ? 28 : 2 });
     else if (e.kind === 'line') node = new Konva.Line({ ...base, points: e.points, hitStrokeWidth: 20 });
     else if (e.kind === 'arrow' || e.kind === 'dashedArrow') node = new Konva.Arrow({ ...base, points: e.points, fill: e.stroke, pointerLength: 10, pointerWidth: 10, hitStrokeWidth: 20, dash: e.kind === 'dashedArrow' ? [6, 4] : [] });
     else if (e.kind === 'text') node = new Konva.Text({ ...base, strokeWidth: 0, stroke: undefined, text: e.text, fontSize: e.fontSize, fontFamily: e.fontFamily });
     else { const image = await renderMath(e.latex, e.fontSize); node = new Konva.Image({ ...base, fill: undefined, stroke: undefined, strokeWidth: 0, image, width: image.width / 2, height: image.height / 2 }); }
     this.nodes.set(e.id, node); this.layer.add(node);
     node.on('click tap', () => this.select(e.id));
-    node.on('dblclick dbltap', () => { if (e.kind === 'text' || e.kind === 'latex') this.onEdit(this.element(e.id)!); });
+    node.on('dblclick dbltap', () => { if (e.semanticId || e.kind === 'text' || e.kind === 'latex') this.onEdit(this.element(e.id)!); });
     node.on('dragmove', () => { node.position({ x: this.snap(node.x()), y: this.snap(node.y()) }); });
     node.on('dragend', () => { this.store.update(e.id, { x: node.x(), y: node.y() }); this.select(e.id); });
     node.on('transformend', () => {
@@ -83,7 +84,7 @@ export class DiagramRenderer {
         handle.on('dragmove', () => move(handle)); hit.on('dragmove', () => move(hit));
         this.controls.add(handle, hit);
       }
-    } else { if (e.kind !== 'text' && e.kind !== 'latex') node.stroke('orange'); this.transformer.nodes([node]); }
+    } else if (e.kind === 'point') { node.stroke('orange'); } else { if (e.kind !== 'text' && e.kind !== 'latex') node.stroke('orange'); this.transformer.nodes([node]); }
     this.stage.batchDraw();
   }
   deleteSelected() { if (this.selectedId) { const id = this.selectedId; this.select(null); this.nodes.get(id)?.destroy(); this.nodes.delete(id); this.store.remove(id); this.stage.draw(); } }

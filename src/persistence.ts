@@ -21,7 +21,7 @@ export function parseDocument(text: string): DiagramDocument {
   for (const entry of list(p.elements, 'elements')) {
     const e = object(entry, 'element'); string(e.id, 'element identity');
     if (!e.id || ids.has(e.id as string)) fail('element identities must be unique and nonempty.'); ids.add(e.id as string);
-    if (!['rectangle', 'circle', 'line', 'arrow', 'dashedArrow', 'text', 'latex'].includes(e.kind as string)) fail('unknown graphical element type.');
+    if (!['rectangle', 'circle', 'point', 'line', 'arrow', 'dashedArrow', 'text', 'latex'].includes(e.kind as string)) fail('unknown graphical element type.');
     for (const key of ['x', 'y', 'rotation', 'scaleX', 'scaleY', 'width', 'height', 'radius', 'strokeWidth', 'fontSize']) number(e[key], `element.${key}`, ['width', 'height', 'radius', 'fontSize'].includes(key));
     if (e.scaleX === 0 || e.scaleY === 0 || (e.strokeWidth as number) < 0) fail('invalid element scale or stroke width.');
     for (const key of ['stroke', 'fill', 'text', 'latex', 'fontFamily']) string(e[key], `element.${key}`);

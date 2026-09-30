@@ -1,11 +1,13 @@
 import { emptySemantics, type Semantics } from './semantics';
-export type ElementKind = 'rectangle' | 'circle' | 'line' | 'arrow' | 'dashedArrow' | 'text' | 'latex';
+export type ElementKind = 'rectangle' | 'circle' | 'point' | 'line' | 'arrow' | 'dashedArrow' | 'text' | 'latex';
 export interface Graphic {
   id: string; kind: ElementKind; semanticId?: string;
   x: number; y: number; rotation: number; scaleX: number; scaleY: number;
   width: number; height: number; radius: number; points: [number, number, number, number];
   stroke: string; fill: string; strokeWidth: number;
   text: string; latex: string; fontSize: number; fontFamily: string;
+  visible?: boolean;
+  label?: { showName: boolean; showProperties: boolean; offsetX: number; offsetY: number };
 }
 export interface DiagramDocument {
   format: 'diagramed'; version: 1; id: string;
