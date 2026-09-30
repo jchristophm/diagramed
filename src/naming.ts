@@ -34,7 +34,7 @@ export function vectorSymbol(doc:DiagramDocument,v:PhysicalVector){
  if(v.kind==='field')return `${v.fieldType==='gravitational'?'g':'E'}_{${ab(doc,v.sourceId)},${ab(doc,v.objectId)}}`;
  const i=doc.semantics.interactions.find(i=>i.id===v.interactionId);const p=v.role==='normal'?'N':v.role==='friction'?'f':i?.model==='nearSurface'?'W':i?.model==='cable'?'T':'F';return `${p}_{${ab(doc,i?.sourceId)},${ab(doc,v.objectId)}}`;
 }
-export function vectorLatex(symbol:string){if(/^\\(?:vec|overrightarrow)\{/.test(symbol))return symbol;const at=symbol.indexOf('_');return at<0?`\\vec{${symbol}}`:`\\vec{${symbol.slice(0,at)}}${symbol.slice(at)}`;}
+export function vectorLatex(symbol:string){if(/^\\(?:vec|overrightarrow)\{/.test(symbol))return symbol;const at=symbol.indexOf('_');return at<0 || !/^(?:[a-zA-Z]+|\\Delta\s+[a-zA-Z]+)$/.test(symbol.slice(0,at))?`\\vec{${symbol}}`:`\\vec{${symbol.slice(0,at)}}${symbol.slice(at)}`;}
 /** Only the unambiguous historical generic contact component gets corrected. Other authored notation stays custom. */
 export function repairContactNotation(doc:DiagramDocument){
  for(const v of doc.semantics.vectors){if(v.role!=='normal')continue;const m=doc.semantics.variables.find(n=>n.id===v.variableId),i=doc.semantics.interactions.find(i=>i.id===v.interactionId);

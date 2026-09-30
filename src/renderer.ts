@@ -93,7 +93,7 @@ export class DiagramRenderer {
   private positionLabel(id: string) {
     const e = this.element(id), label = this.labels.get(id); if (!e || !label) return;
     const size=label.getClientRect({skipTransform:true});
-    label.position(labelPosition(this.currentGraphic(id),size.width,size.height));
+    label.position(labelPosition(this.currentGraphic(id),size.width,size.height,true,this.store.document.presentation.canvas));
   }
   private async addLabel(e: Graphic) {
     const object = this.store.document.semantics.objects.find(o => o.id === e.semanticId);
@@ -106,7 +106,7 @@ export class DiagramRenderer {
     this.labels.set(e.id, group); this.layer.add(group); this.positionLabel(e.id);
     group.on('click tap', () => this.select(e.id));
     group.on('dblclick dbltap', () => this.onEdit(this.element(e.id)!));
-    group.on('dragend', () => { const current = this.element(e.id)!; const size=group.getClientRect({skipTransform:true}),anchor=labelPosition(this.currentGraphic(e.id),size.width,size.height,false); this.store.update(e.id, { label: { ...effectiveLabel(current)!, offsetX: group.x() - anchor.x, offsetY: group.y() - anchor.y } }); this.select(e.id); });
+    group.on('dragend', () => { const current = this.element(e.id)!; const size=group.getClientRect({skipTransform:true}),anchor=labelPosition(this.currentGraphic(e.id),size.width,size.height,false,this.store.document.presentation.canvas); this.store.update(e.id, { label: { ...effectiveLabel(current)!, offsetX: group.x() - anchor.x, offsetY: group.y() - anchor.y } }); this.select(e.id); });
   }
   private refreshAttachments(){
     const doc=structuredClone(this.store.document);for(const g of doc.presentation.elements)if(g.semanticId && this.nodes.has(g.id))Object.assign(g,this.currentGraphic(g.id));

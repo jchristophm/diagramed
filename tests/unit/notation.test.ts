@@ -27,3 +27,5 @@ it('historical custom property/vector symbols survive ordinary physical edits',(
 it('multiple relationships with the same notation get distinct symbols without redefining constants',()=>{const s=new DocumentStore(),b=make(s,'Book');saveVector(s,{kind:'velocity',targetId:b,magnitude:{state:'unknown',unit:'m/s'}});saveVector(s,{kind:'velocity',targetId:b,magnitude:{state:'unknown',unit:'m/s'}});expect(new Set(s.document.semantics.variables.map(v=>v.symbol)).size).toBe(3);expect(vectorLatex('r_{A,B}')).toBe('\\vec{r}_{A,B}');});
 
 it('long and prefix-identical names remain readable within notation limits',()=>{const s=new DocumentStore();make(s,'A'.repeat(119)+'B');make(s,'A'.repeat(119)+'C');expect(new Set(s.document.semantics.objects.map(o=>o.abbreviation)).size).toBe(2);expect(s.document.semantics.variables.every(v=>v.symbol.length<=80)).toBe(true);expect(parseDocument(serializeDocument(s.document))).toEqual(s.document);});
+
+it('vector presentation keeps complex historical markup intact',()=>{expect(vectorLatex('\\frac{F_1}{2}')).toBe('\\vec{\\frac{F_1}{2}}');expect(vectorLatex('\\vec{u}_{custom}')).toBe('\\vec{u}_{custom}');});

@@ -10,7 +10,7 @@ export function attachmentPoint(graphic: Graphic): { x: number; y: number } {
 
 /** Screen-upright label anchor; offsets are presentation only, never physical geometry. */
 export function effectiveLabel(graphic:Graphic){const label=graphic.label;if(!label || label.placement)return label;if(graphic.vectorId && label.offsetX===12 && label.offsetY===12)return {...label,placement:'vectorTip' as const,offsetX:0,offsetY:0};if(graphic.semanticId && label.offsetX===24 && label.offsetY===24)return {...label,placement:'objectCenter' as const,offsetX:0,offsetY:28};return label;}
-export function labelPosition(graphic:Graphic,width:number,height:number,offsets=true){
+export function labelPosition(graphic:Graphic,width:number,height:number,offsets=true,bounds?:{width:number;height:number}){
  const label=effectiveLabel(graphic),center=attachmentPoint(graphic);let x=center.x,y=center.y;
  if(label?.placement==='objectCenter'){x-=width/2;}
  else if(label?.placement==='vectorTip'){
@@ -19,5 +19,6 @@ export function labelPosition(graphic:Graphic,width:number,height:number,offsets
   x=graphic.x+graphic.points[2]*graphic.scaleX*Math.cos(a)-graphic.points[3]*graphic.scaleY*Math.sin(a)+ux*20-uy*14-width/2;
   y=graphic.y+graphic.points[2]*graphic.scaleX*Math.sin(a)+graphic.points[3]*graphic.scaleY*Math.cos(a)+uy*20+ux*14-height/2;
  }
+ if(label?.placement==='vectorTip' && bounds){x=Math.max(4,Math.min(bounds.width-width-4,x));y=Math.max(4,Math.min(bounds.height-height-4,y));}
  if(offsets){x+=label?.offsetX??24;y+=label?.offsetY??24;}return {x,y};
 }
