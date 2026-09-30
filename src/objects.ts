@@ -1,4 +1,6 @@
 import { DocumentStore, newGraphic, type Graphic } from './model';
+import {assertExpressions,ensureNoReferences} from './expressions';
+import {physicalConstants} from './constants';
 import { synchronizeSymbols } from './naming';
 import { attachmentPoint } from './geometry';
 import type { PropertyQuantity, Variable, ObjectCategory } from './semantics';
@@ -43,6 +45,7 @@ export function saveObject(store: DocumentStore, draft: ObjectDraft): string {
     const previousIds = new Set(Object.values(previousProperties));
     const definitions: Record<string, string> = {};
     const removedIds = new Set([...previousIds].filter(variableId => !Object.keys(draft.properties!).some(key => previousProperties[key] === variableId)));
+    ensureNoReferences(next,removedIds);
     if (next.semantics.vectors.some(v => removedIds.has(v.variableId)) || next.semantics.components.some(c => removedIds.has(c.variableId))) throw new Error('This property is referenced by a vector or component. Remove that reference before removing the property.');
     if (next.semantics.objects.some(o => o.id !== id && Object.values(o.properties || {}).some(v => previousIds.has(v)))) throw new Error('This property variable is shared by another object. Shared ownership needs to be resolved before editing it.');
     const registry = next.semantics.variables.filter(v => !previousIds.has(v.id));
@@ -51,6 +54,7 @@ export function saveObject(store: DocumentStore, draft: ObjectDraft): string {
       const key = quantity as PropertyQuantity; if(!categoryProperties[category].includes(key))throw new Error('Property is unavailable for this category.');
       const definition = propertyDefinitions[key], symbol = property.symbol.trim();
       if (!symbol || symbol.length > 80) throw new Error(`${definition.name} needs a symbol (maximum 80 characters).`);
+      if(Object.values(physicalConstants).some(c=>canonicalSymbol(c.symbol)===canonicalSymbol(symbol)))throw new Error('This symbol is reserved for a physical constant.');
       const conflict = registry.find(v => canonicalSymbol(v.symbol) === canonicalSymbol(symbol));
       if (conflict) {
         const owner = next.semantics.objects.find(o => o.id === conflict.ownerObjectId)?.name;
@@ -92,7 +96,7 @@ export function saveObject(store: DocumentStore, draft: ObjectDraft): string {
   if(graphic.kind==='surface'){graphic.x=0;graphic.width=next.presentation.canvas.width;graphic.height=next.presentation.canvas.height-graphic.y;graphic.fill=category==='fluid'?'rgba(65,150,240,0.3)':category==='planetSurface'?'#b8ac98':'#ddd';}
   graphic.visible = draft.representation !== 'none';
   graphic.label = { showName: draft.showName, showProperties: draft.showProperties, offsetX: graphic.label?.offsetX ?? 24, offsetY: graphic.label?.offsetY ?? 24 };
-  next.metadata.updatedAt = new Date().toISOString(); synchronizeSymbols(next); store.replace(next); return id;
+  next.metadata.updatedAt = new Date().toISOString(); synchronizeSymbols(next); assertExpressions(next); store.replace(next); return id;
 }
 export function deleteObject(store: DocumentStore, id: string) {
   const next = structuredClone(store.document);
@@ -100,6 +104,7 @@ export function deleteObject(store: DocumentStore, id: string) {
   const ownedIds = new Set(Object.values(next.semantics.objects.find(o => o.id === id)?.properties || {}));
   if (next.semantics.objects.some(o => o.id !== id && Object.values(o.properties || {}).some(v => ownedIds.has(v)))) throw new Error('Another object references this property variable. Resolve that reference before deleting the object.');
   if (next.semantics.vectors.some(v => ownedIds.has(v.variableId)) || next.semantics.components.some(c => ownedIds.has(c.variableId))) throw new Error('Remove dependent variable references before deleting this object.');
+  ensureNoReferences(next,ownedIds);
   next.semantics.objects = next.semantics.objects.filter(o => o.id !== id);
   next.semantics.variables = next.semantics.variables.filter(v => !ownedIds.has(v.id));
   next.presentation.elements = next.presentation.elements.filter(e => e.semanticId !== id);

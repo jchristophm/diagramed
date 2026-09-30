@@ -1,5 +1,6 @@
 import { newGraphic, type DiagramDocument } from './model';
 import { canonicalSymbol, propertyDefinitions, propertySigned, categoryNames, categoryProperties } from './objects';
+import {assertExpressions} from './expressions';
 import {eligibility} from './eligibility';
 import { quantityUnits } from './physics';
 import { physicalConstants } from './constants';
@@ -111,7 +112,7 @@ function validateRelationships(doc: DiagramDocument) {
       if(variable.ownerVectorId && !doc.semantics.vectors.some(v=>v.id===variable.ownerVectorId && v.variableId===variable.id))fail('orphaned vector variable.');
       if(variable.ownerInteractionId && !doc.semantics.interactions.some(i=>i.id===variable.ownerInteractionId && Object.values(i.properties||{}).includes(variable.id)))fail('orphaned interaction variable.');
       if(!quantityUnits[variable.quantity || '']?.includes(variable.unit || ''))fail('invalid quantity units.');
-      if(!['known','unknown'].includes(variable.state||''))fail('invalid magnitude state.');
+      if(!['known','unknown','expression'].includes(variable.state||''))fail('invalid magnitude state.');
       if(variable.state==='unknown' && variable.value!==undefined)fail('unknown magnitude has a value.');
       if(variable.state==='known' && (variable.value===undefined || !Number.isFinite(variable.value)||variable.value<0 || (variable.quantity==='length' && variable.value===0)))fail('invalid known magnitude.');
     }else if (variable.ownerObjectId !== undefined || variable.quantity !== undefined || variable.state !== undefined) {
@@ -135,6 +136,7 @@ function validateRelationships(doc: DiagramDocument) {
   for(const v of doc.semantics.vectors){if(v.kind==='separation')continue;const i=doc.semantics.interactions.find(i=>i.id===v.interactionId);if(v.kind==='force' && !i)fail('force requires interaction.');const c={kind:v.kind==='motion'?v.motionType!:v.kind,sourceId:v.kind==='field'?v.sourceId:i?.sourceId,targetId:v.objectId,interactionType:v.kind==='field'?v.fieldType:i?.kind as 'gravitational'|'electric'|'contact'|'buoyant',contactType:i?.model==='spring'?'spring' as const:i?.model==='cable'?'cable' as const:'ordinary' as const,separationId:v.separationId||i?.separationId};if(!eligibility(doc,c))fail('invalid vector configuration or prerequisites.');if(i && i.targetId!==v.objectId)fail('contradictory force target.');const variable=variables.get(v.variableId);const expected=v.kind==='force'?'force':v.kind==='field'?(v.fieldType==='gravitational'?'gravitationalField':'electricField'):v.motionType;if(variable?.quantity!==expected || variable?.ownerVectorId!==v.id)fail('invalid vector magnitude ownership or quantity.');}
   for(const i of doc.semantics.interactions){const linked=doc.semantics.vectors.filter(v=>v.interactionId===i.id);if(i.friction){if(i.kind!=='contact'||i.model!=='ordinary'||!['static','kinetic'].includes(i.friction)||!['normal','friction','resultant'].every(role=>linked.filter(v=>v.role===role).length===1))fail('invalid linked contact group.');}else if(linked.some(v=>v.role))fail('unexpected linked contact role.');for(const [key,id]of Object.entries(i.properties||{})){if(!['volume','staticFriction','kineticFriction'].includes(key)||variables.get(id)?.ownerInteractionId!==i.id||variables.get(id)?.quantity!==key)fail('invalid interaction property ownership.');}}
   for (const v of doc.semantics.vectors) if (!variables.has(v.variableId) || (v.objectId && !objects.has(v.objectId)) || (v.interactionId && !interactions.has(v.interactionId))) fail('vector references are invalid.');
+  try{assertExpressions(doc);}catch(error){fail((error as Error).message);}
   for (const c of doc.semantics.components) if (!vectors.has(c.vectorId) || !coordinates.has(c.coordinateSystemId) || !variables.has(c.variableId)) fail('component references are invalid.');
 }
 export function serializeDocument(document: DiagramDocument) { return JSON.stringify(document, null, 2) + '\n'; }

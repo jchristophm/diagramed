@@ -33,3 +33,7 @@ Checkpoint 2 candidate: canonical constants, interaction-owned quantities, separ
 Checkpoint 2 verified and deployed: 40998b5ec279b25eb505327f0913c542148b9dd7, GitHub Actions run 36750432191. Unit/build and 14 desktop/mobile browser tests passed.
 
 Checkpoint 3 candidate adds all semantic force categories, fields and motion vectors, reusable deterministic eligibility, linked normal/friction/resultant graphics, magnitude editing and collections. 31 unit tests and production build pass; browser verification is pending this push. Expressions and final acceptance/deployment handoff remain unfinished.
+
+Checkpoint 3 confirmed: 5913fdcc1a9d226ed2b918b28a8bec92d91c7769, Actions run 36752175525 passed unit/build and 16 desktop/mobile browser tests and deployed. An initial candidate had a TypeScript narrowing failure and was immediately corrected before this successful verification.
+
+Checkpoint 4 candidate implements bounded structured expressions, context palettes, canonical constant references, automatic symbol rendering and dependency protection. 35 unit tests and build pass. Browser expression acceptance will run in Actions. Final acceptance scenarios, schema documentation, examples and independent deployed verification remain.
