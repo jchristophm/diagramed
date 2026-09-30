@@ -1,1 +1,25 @@
-{"name":"diagramed","private":true,"version":"0.1.0","type":"module","scripts":{"dev":"vite --host 0.0.0.0","build":"tsc --noEmit && vite build","test":"vitest run","test:browser":"playwright test"},"dependencies":{"html2canvas":"^1.4.1","katex":"^0.16.22","konva":"^9.3.22"},"devDependencies":{"@playwright/test":"1.56.1","@types/katex":"^0.16.7","typescript":"^5.9.3","vite":"^6.4.1","vitest":"^3.2.4"}}
+{
+  "name": "diagramed",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run",
+    "test:browser": "playwright test",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "dependencies": {
+    "html2canvas": "^1.4.1",
+    "katex": "^0.16.22",
+    "konva": "^9.3.22"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "@types/katex": "^0.16.7",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.1",
+    "vitest": "^3.2.4"
+  }
+}

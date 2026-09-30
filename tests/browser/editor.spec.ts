@@ -6,7 +6,7 @@ async function save(page: Page) {
 }
 test('create, manipulate, download, reopen, edit math and save again', async ({ page }, info) => {
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
-  await page.goto('/'); await expect(page.locator('canvas').first()).toBeVisible();
+  await page.goto('./'); await expect(page.locator('canvas').first()).toBeVisible();
   for (const title of ['Box', 'Circle', 'Arrow', 'Arrow', 'Dashed Arrow', 'Line', 'Label']) await page.getByTitle(title, {exact:true}).click();
   await page.getByTitle('Insert Math').click(); await page.locator('#latexInput').fill('F=ma'); await page.getByRole('button', {name:'Insert',exact:true}).click();
   await expect(page.locator('#mathModal')).toBeHidden();
@@ -47,7 +47,7 @@ test('create, manipulate, download, reopen, edit math and save again', async ({ 
   expect(errors).toEqual([]); await page.screenshot({path:`test-results/${info.project.name}.png`});
 });
 test('drag snapping, transformation, grid state and deletion persist', async ({ page }, info) => {
-  await page.goto('/'); await page.getByTitle('Box',{exact:true}).click();
+  await page.goto('./'); await page.getByTitle('Box',{exact:true}).click();
   const doc=await save(page), e=doc.presentation.elements[0];
   const box=(await page.locator('#container').boundingBox())!;
   const scale=Math.min(box.width/doc.presentation.canvas.width,box.height/doc.presentation.canvas.height);
