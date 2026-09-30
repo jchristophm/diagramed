@@ -1,3 +1,5 @@
+import {initializeVectors} from './vector-ui';
+import {deleteVector} from './physics';
 import katex from 'katex';
 import { showPropertyFields, readPropertyFields } from './property-form';
 import { DocumentStore, newDocument, type Graphic } from './model';
@@ -9,6 +11,7 @@ const $ = <T extends HTMLElement>(selector: string) => document.querySelector<T>
 const container = $<HTMLDivElement>('#container');
 const store = new DocumentStore(newDocument(container.clientWidth || 800, container.clientHeight || 600));
 const renderer = new DiagramRenderer(store, container);
+const vectorUI=initializeVectors(store,renderer);
 const dialog = $<HTMLDialogElement>('#object-dialog'), status = $('#status');
 for(const [key,name] of Object.entries(categoryNames)){const option=document.createElement('option');option.value=key;option.textContent=name;$<HTMLSelectElement>('#object-category').append(option);}
 for(const preset of objectPresets){const option=document.createElement('option');option.value=preset.key;option.textContent=categoryNames[preset.key];$<HTMLSelectElement>('#object-preset').append(option);}
@@ -67,6 +70,7 @@ function showCollection() {
 }
 $('#close-collection').addEventListener('click',()=> $<HTMLDialogElement>('#collection-dialog').close());
 renderer.onEdit = element => {
+  if(element.vectorId){vectorUI.open(element.vectorId);return;}
   if (element.semanticId) { selectedObjectId = element.semanticId; openObject(element.semanticId); return; }
   legacy = structuredClone(element); $<HTMLTextAreaElement>('#legacy-input').value = element.kind === 'latex' ? element.latex : element.text;
   $('#legacy-title').textContent = element.kind === 'latex' ? 'Edit legacy equation' : 'Edit legacy label'; updateLegacyPreview(); $<HTMLDialogElement>('#legacy-dialog').showModal();
@@ -80,6 +84,7 @@ $('#legacy-form').addEventListener('submit', async event => {
   catch (error) { report(error); } finally { busy = false; }
 });
 async function removeSelected() {
+  const selected=store.document.presentation.elements.find(e=>e.id===renderer.selectedId);if(selected?.vectorId){deleteVector(store,selected.vectorId);await renderer.render();return;}
   const id = selectedObject();
   if (id) { deleteObject(store, id); selectedObjectId = undefined; await renderer.render(); }
   else renderer.deleteSelected();
@@ -89,7 +94,7 @@ async function action(name: string) {
   try {
     if (name === 'object') openObject();
     else if (name === 'collection') showCollection();
-    else if (name === 'edit') { const id = selectedObject(); if (id) openObject(id); else report('Select an object to edit its definition.'); }
+    else if (name === 'edit') {const g=store.document.presentation.elements.find(e=>e.id===renderer.selectedId);if(g?.vectorId){vectorUI.open(g.vectorId);return;} const id = selectedObject(); if (id) openObject(id); else report('Select an object to edit its definition.'); }
     else if (name === 'grid') renderer.toggleGrid();
     else if (name === 'delete') await removeSelected();
     else if (name === 'download') downloadDocument(store.document);

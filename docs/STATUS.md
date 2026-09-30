@@ -25,3 +25,7 @@ Actual mobile touchscreen acceptance is reserved for the user. There is no autos
 ## Contract 3 in progress
 
 Object categories, specialized presets/renderers and version 3 object persistence are implemented. 24 unit tests and TypeScript/production build pass. Local Chromium cannot launch because this execution environment denies its socket operation; desktop/mobile browser verification is delegated to the existing GitHub Actions workflow. Checkpoint 1 is pending that browser result. Checkpoints 2–5 remain unfinished. Resume from development; do not touch main or Problemly.
+
+Checkpoint 1 confirmed: GitHub Actions run 36749778933 passed all 24 unit tests, build and 12 desktop/mobile browser tests and deployed successfully (commit 7e10c90a11811f1f67dcdc160fb75df3d9f18196). The first candidate failed only because a regression test assumed variable array order; it now checks persistent IDs.
+
+Checkpoint 2 candidate: canonical constants, interaction-owned quantities, separation commands and UI, constrained endpoint attachment, visibility, abbreviations and ownership validation are implemented. 27 unit tests and build pass. Browser tests will run in GitHub Actions. Full force/field/motion UI and expressions remain unfinished.

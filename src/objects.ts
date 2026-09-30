@@ -1,4 +1,5 @@
 import { DocumentStore, newGraphic, type Graphic } from './model';
+import { synchronizeSymbols } from './naming';
 import { attachmentPoint } from './geometry';
 import type { PropertyQuantity, Variable, ObjectCategory } from './semantics';
 export const propertyDefinitions = {
@@ -91,11 +92,11 @@ export function saveObject(store: DocumentStore, draft: ObjectDraft): string {
   if(graphic.kind==='surface'){graphic.x=0;graphic.width=next.presentation.canvas.width;graphic.height=next.presentation.canvas.height-graphic.y;graphic.fill=category==='fluid'?'rgba(65,150,240,0.3)':category==='planetSurface'?'#b8ac98':'#ddd';}
   graphic.visible = draft.representation !== 'none';
   graphic.label = { showName: draft.showName, showProperties: draft.showProperties, offsetX: graphic.label?.offsetX ?? 24, offsetY: graphic.label?.offsetY ?? 24 };
-  next.metadata.updatedAt = new Date().toISOString(); store.replace(next); return id;
+  next.metadata.updatedAt = new Date().toISOString(); synchronizeSymbols(next); store.replace(next); return id;
 }
 export function deleteObject(store: DocumentStore, id: string) {
   const next = structuredClone(store.document);
-  if (next.semantics.interactions.some(i => i.objectIds.includes(id)) || next.semantics.vectors.some(v => v.objectId === id)) throw new Error('Remove this object’s dependent interactions or vectors before deleting it.');
+  if (next.semantics.interactions.some(i => i.objectIds.includes(id)) || next.semantics.vectors.some(v => v.objectId === id || v.sourceId===id || v.fromId===id || v.toId===id)) throw new Error('Remove this object’s dependent interactions or vectors before deleting it.');
   const ownedIds = new Set(Object.values(next.semantics.objects.find(o => o.id === id)?.properties || {}));
   if (next.semantics.objects.some(o => o.id !== id && Object.values(o.properties || {}).some(v => ownedIds.has(v)))) throw new Error('Another object references this property variable. Resolve that reference before deleting the object.');
   if (next.semantics.vectors.some(v => ownedIds.has(v.variableId)) || next.semantics.components.some(c => ownedIds.has(c.variableId))) throw new Error('Remove dependent variable references before deleting this object.');
@@ -110,7 +111,7 @@ export function objectDraft(store: DocumentStore, id?: string): ObjectDraft {
   for (const [key, variableId] of Object.entries(object?.properties || {})) {
     if (!(Object.hasOwn(propertyDefinitions, key))) continue;
     const variable = store.document.semantics.variables.find(v => v.id === variableId);
-    if (variable) properties[key as PropertyQuantity] = { symbol: variable.symbol, unit: variable.unit || propertyDefinitions[key as PropertyQuantity].units[0], state: variable.state || (variable.value === undefined ? 'unknown' : 'known'), value: variable.value };
+    if (variable) properties[key as PropertyQuantity] = { symbol: variable.symbol, unit: variable.unit || propertyDefinitions[key as PropertyQuantity].units[0], state: variable.state==='known'?'known':'unknown', value: variable.value };
   }
   return { id, category:object?.category || 'ordinary',polarity:object?.polarity || 'positive', name: object?.name || '', representation: g?.visible === false ? 'none' : (g?.kind as Representation) || 'circle', showName: g?.label?.showName ?? true, showProperties: g?.label?.showProperties ?? true, properties };
 }

@@ -1,6 +1,7 @@
 import Konva from 'konva';
 import { DocumentStore, type DiagramDocument, type Graphic } from './model';
 import { renderMath } from './math';
+import { displayedVector } from './physics';
 import { attachmentPoint } from './geometry';
 export class DiagramRenderer {
   readonly stage: Konva.Stage;
@@ -14,6 +15,7 @@ export class DiagramRenderer {
   onEdit: (element: Graphic) => void = () => {};
   onSelect: (element: Graphic | null) => void = () => {};
   private symbols(e: Graphic, doc = this.store.document) {
+    if(e.vectorId){const v=doc.semantics.vectors.find(v=>v.id===e.vectorId);return doc.semantics.variables.find(variable=>variable.id===v?.variableId)?.symbol || '';}
     const object = doc.semantics.objects.find(o => o.id === e.semanticId);
     return Object.values(object?.properties || {}).map(id => doc.semantics.variables.find(v => v.id === id)?.symbol).filter(Boolean).join(',\\; ');
   }
@@ -33,7 +35,7 @@ export class DiagramRenderer {
   }
   async prepare(doc: DiagramDocument) {
     await Promise.all(doc.presentation.elements.filter(e => e.kind === 'latex').map(e => renderMath(e.latex, e.fontSize)));
-    await Promise.all(doc.presentation.elements.filter(e => e.semanticId && e.visible !== false && e.label?.showProperties && this.symbols(e, doc)).map(e => renderMath(this.symbols(e, doc), 16)));
+    await Promise.all(doc.presentation.elements.filter(e => (e.semanticId || e.vectorId) && e.visible !== false && e.label?.showProperties && this.symbols(e, doc)).map(e => renderMath(this.symbols(e, doc), 16)));
   }
   async render() {
     await this.prepare(this.store.document);
@@ -45,7 +47,8 @@ export class DiagramRenderer {
     for (const e of [...elements.filter(e=>e.kind==='surface'),...elements.filter(e=>e.kind!=='surface')]) await this.addNode(e);
     this.fit(); this.stage.draw();
   }
-  async addNode(e: Graphic) {
+  async addNode(record: Graphic) {
+    let e=record; if(e.vectorId){const v=this.store.document.semantics.vectors.find(v=>v.id===e.vectorId);if(!v)return;const shown=displayedVector(this.store.document,v,e);if(!shown)return;e=shown;}
     if (e.visible === false) return;
     const base = { id: e.id, x: e.x, y: e.y, rotation: e.rotation, scaleX: e.scaleX, scaleY: e.scaleY, stroke: e.stroke, strokeWidth: e.strokeWidth, strokeScaleEnabled: !e.semanticId, fill: e.fill, draggable: true };
     let node: Konva.Shape;
@@ -69,16 +72,16 @@ export class DiagramRenderer {
         context.beginPath(); context.arc(0, 0, 22 / this.stage.scaleX(), 0, Math.PI * 2, false); context.closePath(); context.fillStrokeShape(shape);
       });
     }
-    if (e.semanticId) await this.addLabel(e);
+    if (e.semanticId || e.vectorId) await this.addLabel(e); if(e.vectorId)node.draggable(false);
     node.on('click tap', () => this.select(e.id));
-    node.on('dblclick dbltap', () => { if (e.semanticId || e.kind === 'text' || e.kind === 'latex') this.onEdit(this.element(e.id)!); });
-    node.on('dragmove', () => { if(e.kind==='surface'){node.position({x:0,y:Math.max(0,Math.min(this.store.document.presentation.canvas.height-20,this.snap(node.y())))});(node as Konva.Rect).height(this.store.document.presentation.canvas.height-node.y());}else node.position({ x: this.snap(node.x()), y: this.snap(node.y()) }); this.positionLabel(e.id); });
+    node.on('dblclick dbltap', () => { if (e.semanticId || e.vectorId || e.kind === 'text' || e.kind === 'latex') this.onEdit(this.element(e.id)!); });
+    node.on('dragmove', () => { if(e.kind==='surface'){node.position({x:0,y:Math.max(0,Math.min(this.store.document.presentation.canvas.height-20,this.snap(node.y())))});(node as Konva.Rect).height(this.store.document.presentation.canvas.height-node.y());}else node.position({ x: this.snap(node.x()), y: this.snap(node.y()) }); this.positionLabel(e.id); this.refreshAttachments(); });
     node.on('dragend', () => { this.store.update(e.id, { x: node.x(), y: node.y(),...(e.kind==='surface'?{height:this.store.document.presentation.canvas.height-node.y()}: {}) }); this.select(e.id); });
     node.on('transformend', () => {
       const patch = { x: this.snap(node.x()), y: this.snap(node.y()), rotation: node.rotation(), scaleX: node.scaleX(), scaleY: node.scaleY() };
-      node.position({ x: patch.x, y: patch.y }); this.store.update(e.id, patch); this.positionLabel(e.id); this.select(e.id);
+      node.position({ x: patch.x, y: patch.y }); this.store.update(e.id, patch); this.positionLabel(e.id); this.refreshAttachments(); this.select(e.id);
     });
-    node.on('transform', () => this.positionLabel(e.id));
+    node.on('transform', () => {this.positionLabel(e.id);this.refreshAttachments();});
     this.layer.draw();
   }
   private currentGraphic(id: string): Graphic {
@@ -92,9 +95,9 @@ export class DiagramRenderer {
   }
   private async addLabel(e: Graphic) {
     const object = this.store.document.semantics.objects.find(o => o.id === e.semanticId);
-    if (!object || !e.label || (!e.label.showName && !e.label.showProperties)) return;
+    if ((!object && !e.vectorId) || !e.label || (!e.label.showName && !e.label.showProperties)) return;
     const group = new Konva.Group({ draggable: true });
-    if (e.label.showName) group.add(new Konva.Text({ text: object.name, fontSize: 16, fontFamily: 'Arial', fill: '#222', hitStrokeWidth: 8 }));
+    if (e.label.showName) group.add(new Konva.Text({ text: object?.name || '', fontSize: 16, fontFamily: 'Arial', fill: '#222', hitStrokeWidth: 8 }));
     const symbols = this.symbols(e);
     if (e.label.showProperties && symbols) { const image = await renderMath(symbols, 16); group.add(new Konva.Image({ image, width: image.width / 2, height: image.height / 2, y: e.label.showName ? 22 : 0 })); }
     this.labels.set(e.id, group); this.layer.add(group); this.positionLabel(e.id);
@@ -102,10 +105,14 @@ export class DiagramRenderer {
     group.on('dblclick dbltap', () => this.onEdit(this.element(e.id)!));
     group.on('dragend', () => { const current = this.element(e.id)!; const center = attachmentPoint(this.currentGraphic(e.id)); this.store.update(e.id, { label: { ...current.label!, offsetX: group.x() - center.x, offsetY: group.y() - center.y } }); this.select(e.id); });
   }
+  private refreshAttachments(){
+    const doc=structuredClone(this.store.document);for(const g of doc.presentation.elements)if(g.semanticId && this.nodes.has(g.id))Object.assign(g,this.currentGraphic(g.id));
+    for(const g of doc.presentation.elements){if(!g.vectorId)continue;const v=doc.semantics.vectors.find(v=>v.id===g.vectorId),node=this.nodes.get(g.id);if(!v||!node)continue;const current=displayedVector(doc,v,g);if(!current)continue;node.position({x:current.x,y:current.y});(node as Konva.Line).points(current.points);this.positionLabel(g.id);}
+  }
   private element(id: string) { return this.store.document.presentation.elements.find(e => e.id === id); }
   select(id: string | null) {
     const old = this.selectedId && this.nodes.get(this.selectedId);
-    if (old) { const e = this.element(this.selectedId!); if (e && !['text', 'latex'].includes(e.kind)) old.stroke(e.stroke); old.draggable(true); }
+    if (old) { const e = this.element(this.selectedId!); if (e && !['text', 'latex'].includes(e.kind)) old.stroke(e.stroke); old.draggable(!e?.vectorId); }
     this.controls.destroyChildren(); this.transformer = new Konva.Transformer({ rotateEnabled: true, ignoreStroke: true, padding: 4, anchorSize: 12 }); this.controls.add(this.transformer);
     this.selectedId = id;
     this.onSelect(id ? this.element(id) || null : null);
@@ -114,9 +121,10 @@ export class DiagramRenderer {
     if (!e || !node) return;
     if (['line', 'arrow', 'dashedArrow','spring','cable'].includes(e.kind)) {
       node.stroke('orange'); node.draggable(false);
-      for (const index of [0, 2]) {
+      const v=e.vectorId && this.store.document.semantics.vectors.find(v=>v.id===e.vectorId);
+      for (const index of v ? (v.kind==='separation'||v.role==='resultant'?[]:[2]) : [0,2]) {
         const abs = node.getAbsoluteTransform().copy(); const scale = this.stage.scaleX();
-        const p = abs.point({ x: e.points[index], y: e.points[index + 1] });
+        const p = abs.point({ x: (node as Konva.Line).points()[index], y: (node as Konva.Line).points()[index + 1] });
         const handle = new Konva.Circle({ x: p.x / scale, y: p.y / scale, radius: 6, fill: '#ff0', stroke: '#000', strokeWidth: 1, draggable: true });
         const hit = new Konva.Circle({ x: handle.x(), y: handle.y(), radius: 16, fill: 'rgba(0,0,0,0.01)', draggable: true });
         const move = (target: Konva.Circle) => {
@@ -124,7 +132,7 @@ export class DiagramRenderer {
           handle.position(target.position()); hit.position(target.position());
           const local = node.getAbsoluteTransform().copy().invert().point({ x: target.x() * scale, y: target.y() * scale });
           const points = [...this.element(id)!.points] as Graphic['points']; points[index] = local.x; points[index + 1] = local.y;
-          (node as Konva.Line).points(points); this.store.update(id, { points }); this.stage.batchDraw();
+          (node as Konva.Line).points(points); this.store.update(id, { points }); this.refreshAttachments(); this.stage.batchDraw();
         };
         handle.on('dragmove', () => move(handle)); hit.on('dragmove', () => move(hit));
         this.controls.add(handle, hit);
@@ -137,6 +145,6 @@ export class DiagramRenderer {
     }
     this.stage.batchDraw();
   }
-  deleteSelected() { if (this.selectedId) { const id = this.selectedId; if (this.element(id)?.semanticId) throw new Error('Semantic objects must be deleted through the object operations.'); this.select(null); this.nodes.get(id)?.destroy(); this.labels.get(id)?.destroy(); this.nodes.delete(id); this.labels.delete(id); this.store.remove(id); this.stage.draw(); } }
+  deleteSelected() { if (this.selectedId) { const id = this.selectedId; if (this.element(id)?.semanticId || this.element(id)?.vectorId) throw new Error('Semantic objects must be deleted through the object operations.'); this.select(null); this.nodes.get(id)?.destroy(); this.labels.get(id)?.destroy(); this.nodes.delete(id); this.labels.delete(id); this.store.remove(id); this.stage.draw(); } }
   toggleGrid() { const p = this.store.document.presentation; p.grid.visible = !p.grid.visible; this.grid.visible(p.grid.visible); this.store.changed(); this.stage.draw(); }
 }

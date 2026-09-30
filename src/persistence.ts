@@ -1,5 +1,7 @@
 import { newGraphic, type DiagramDocument } from './model';
 import { canonicalSymbol, propertyDefinitions, propertySigned, categoryNames, categoryProperties } from './objects';
+import { quantityUnits } from './physics';
+import { physicalConstants } from './constants';
 import type { PropertyQuantity } from './semantics';
 type ObjectValue = Record<string, unknown>;
 function fail(message: string): never { throw new Error(`Cannot open diagram: ${message}`); }
@@ -29,6 +31,7 @@ export function parseDocument(text: string): DiagramDocument {
     if (e.scaleX === 0 || e.scaleY === 0 || (e.strokeWidth as number) < 0) fail('invalid element scale or stroke width.');
     for (const key of ['stroke', 'fill', 'text', 'latex', 'fontFamily']) string(e[key], `element.${key}`);
     const points = list(e.points, 'points'); if (points.length !== 4) fail('line endpoints require four coordinates.'); points.forEach(v => number(v, 'endpoint'));
+    if(e.vectorId!==undefined)string(e.vectorId,'vector identity');
     if (e.semanticId !== undefined) string(e.semanticId, 'semantic identity');
     if (e.visible !== undefined && typeof e.visible !== 'boolean') fail('element visibility must be true or false.');
     if (e.label !== undefined) {
@@ -48,7 +51,7 @@ export function parseDocument(text: string): DiagramDocument {
       if (key === 'objects' && entry.properties !== undefined) Object.values(object(entry.properties, 'properties')).forEach(v => string(v, 'property variable reference'));
       if (key === 'interactions') list(entry.objectIds, 'interaction objects').forEach(v => string(v, 'object reference'));
       if (key === 'variables') { if (entry.value !== undefined && (typeof entry.value !== 'number' || !Number.isFinite(entry.value))) fail('variable value must be a finite number.'); if (entry.unit !== undefined) string(entry.unit, 'variable unit'); }
-      if (key === 'vectors') { if (!['force', 'field', 'motion'].includes(entry.kind as string)) fail('unknown semantic vector kind.'); for (const f of ['objectId', 'interactionId']) if (entry[f] !== undefined) string(entry[f], f); }
+      if (key === 'vectors') { if (!['force', 'field', 'motion','separation'].includes(entry.kind as string)) fail('unknown semantic vector kind.'); for (const f of ['objectId', 'interactionId']) if (entry[f] !== undefined) string(entry[f], f); }
       if (key === 'coordinateSystems') { if (entry.dimensions !== 1 && entry.dimensions !== 2) fail('coordinate system dimension must be 1 or 2.'); const origin = list(entry.origin, 'origin'); if (origin.length !== 2) fail('origin must contain two coordinates.'); origin.forEach(v => number(v, 'origin coordinate')); number(entry.angle, 'coordinate angle'); }
       if (key === 'components' && !['x', 'y'].includes(entry.axis as string)) fail('component axis must be x or y.');
     }
@@ -102,7 +105,15 @@ function validateRelationships(doc: DiagramDocument) {
     const symbol = canonicalSymbol(variable.symbol); if (!symbol) fail('variable symbol cannot be empty.');
     if (variable.quantity && variable.symbol.length > 80) fail('property symbols must be at most 80 characters.');
     if (symbols.has(symbol)) fail('ambiguous duplicate variable symbols. Choose distinct subscripts.'); symbols.add(symbol);
-    if (variable.ownerObjectId !== undefined || variable.quantity !== undefined || variable.state !== undefined) {
+    if(variable.ownerVectorId || variable.ownerInteractionId){
+      const owners=Number(!!variable.ownerVectorId)+Number(!!variable.ownerInteractionId)+Number(!!variable.ownerObjectId);if(owners!==1)fail('invalid variable ownership.');
+      if(variable.ownerVectorId && !doc.semantics.vectors.some(v=>v.id===variable.ownerVectorId && v.variableId===variable.id))fail('orphaned vector variable.');
+      if(variable.ownerInteractionId && !doc.semantics.interactions.some(i=>i.id===variable.ownerInteractionId && Object.values(i.properties||{}).includes(variable.id)))fail('orphaned interaction variable.');
+      if(!quantityUnits[variable.quantity || '']?.includes(variable.unit || ''))fail('invalid quantity units.');
+      if(!['known','unknown'].includes(variable.state||''))fail('invalid magnitude state.');
+      if(variable.state==='unknown' && variable.value!==undefined)fail('unknown magnitude has a value.');
+      if(variable.state==='known' && (variable.value===undefined || !Number.isFinite(variable.value)||variable.value<0 || (variable.quantity==='length' && variable.value===0)))fail('invalid known magnitude.');
+    }else if (variable.ownerObjectId !== undefined || variable.quantity !== undefined || variable.state !== undefined) {
       if (!variable.ownerObjectId || !objects.has(variable.ownerObjectId) || !referenced.has(variable.id)) fail('orphaned property variable.');
       const definition = propertyDefinitions[variable.quantity as PropertyQuantity];
       if (!definition || !definition.units.includes(variable.unit || '')) fail('property unit does not match its quantity.');
@@ -115,7 +126,11 @@ function validateRelationships(doc: DiagramDocument) {
   const interactions = new Set(doc.semantics.interactions.map(i => i.id));
   const vectors = new Set(doc.semantics.vectors.map(v => v.id));
   const coordinates = new Set(doc.semantics.coordinateSystems.map(c => c.id));
+  for(const v of doc.semantics.vectors){if(v.kind==='separation' && (!v.fromId || !v.toId || v.fromId===v.toId || !objects.has(v.fromId) || !objects.has(v.toId)))fail('invalid separation endpoints.');const graphics=doc.presentation.elements.filter(g=>g.vectorId===v.id);if(graphics.length!==1 || !['arrow','dashedArrow'].includes(graphics[0].kind)||typeof graphics[0].visible!=='boolean')fail('missing vector configuration.');}
+  for(const g of doc.presentation.elements)if(g.vectorId && (!vectors.has(g.vectorId)||g.semanticId))fail('invalid graphical vector reference.');
+  for(const v of variables.values())if(Object.values(physicalConstants).some(c=>c.id===v.id || canonicalSymbol(c.symbol)===canonicalSymbol(v.symbol)))fail('reserved physical constant identity or symbol.');
   for (const i of doc.semantics.interactions) if (i.objectIds.some(id => !objects.has(id))) fail('interaction references a missing object.');
+  for(const i of doc.semantics.interactions){if(i.sourceId && (i.sourceId===i.targetId || !objects.has(i.sourceId)||!objects.has(i.targetId||'') || i.objectIds.length!==2 || !i.objectIds.includes(i.sourceId)||!i.objectIds.includes(i.targetId!)))fail('contradictory interaction participants.');if(i.separationId){const v=doc.semantics.vectors.find(v=>v.id===i.separationId);if(!v || v.kind!=='separation' || ![v.fromId,v.toId].includes(i.sourceId)||![v.fromId,v.toId].includes(i.targetId))fail('invalid interaction separation.');}}
   for (const v of doc.semantics.vectors) if (!variables.has(v.variableId) || (v.objectId && !objects.has(v.objectId)) || (v.interactionId && !interactions.has(v.interactionId))) fail('vector references are invalid.');
   for (const c of doc.semantics.components) if (!vectors.has(c.vectorId) || !coordinates.has(c.coordinateSystemId) || !variables.has(c.variableId)) fail('component references are invalid.');
 }

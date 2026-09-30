@@ -2,7 +2,7 @@
 <html lang="en">
 <head><meta charset="UTF-8"><title>Diagramed</title><meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="stylesheet" href="style.css"></head>
 <body>
-<div id="toolbar-top"><button data-action="object" title="Object">Object</button><button data-action="collection" title="Objects">Objects</button><button data-action="edit" title="Edit object">Edit</button><span id="selected-name"></span></div>
+<div id="toolbar-top"><button data-action="object" title="Object">Object</button><button data-action="collection" title="Objects">Objects</button><button data-action="edit" title="Edit object">Edit</button><button data-action="vector" title="Vector">Vector</button><button data-action="vectors" title="Vectors">Vectors</button><span id="selected-name"></span></div>
 <div id="main-canvas"><div id="container" aria-label="Physics diagram"></div></div>
 <div id="toolbar-bottom"><button data-action="open" title="Open JSON">Open</button><button data-action="grid" title="Toggle Grid">Grid</button><button data-action="delete" title="Delete selected object">Delete</button><button data-action="download" title="Download JSON">Save</button></div>
 <input id="file-input" type="file" accept=".json,application/json" hidden><p id="status" role="status" aria-live="polite"></p>
@@ -22,5 +22,7 @@
 </form></dialog>
 <dialog id="collection-dialog" aria-labelledby="collection-title"><h2 id="collection-title">Objects</h2><p class="hint">Select a name to locate its representation. Hidden objects remain part of the physical model.</p><div id="object-list"></div><div class="dialog-actions"><button id="close-collection">Close</button></div></dialog>
 <dialog id="legacy-dialog" aria-labelledby="legacy-title"><form id="legacy-form"><h2 id="legacy-title">Edit legacy label</h2><textarea id="legacy-input" rows="3"></textarea><div id="legacy-preview"></div><div class="dialog-actions"><button type="button" id="cancel-legacy">Cancel</button><button type="submit">Save label</button></div></form></dialog>
+<dialog id="vector-dialog"><form id="vector-form"><h2>Define separation</h2><label>FROM <select id="vector-from"></select></label><label>TO <select id="vector-to"></select></label><label>Symbol (LaTeX) <input id="vector-symbol" maxlength="80"></label><label>Magnitude state <select id="vector-state"><option value="unknown">Unknown</option><option value="known">Known</option></select></label><label>Numerical magnitude <input id="vector-value" inputmode="decimal"></label><label>Units <select id="vector-unit"><option>m</option><option>cm</option><option>km</option></select></label><p id="vector-error" role="alert"></p><div class="dialog-actions"><button type="button" id="cancel-vector">Cancel</button><button type="submit">Save vector</button></div></form></dialog>
+<dialog id="vector-collection"><h2>Vectors</h2><div id="vector-list"></div><p id="vector-collection-error" role="alert"></p><button id="close-vectors">Close</button></dialog>
 <script type="module" src="/src/main.ts"></script>
 </body></html>

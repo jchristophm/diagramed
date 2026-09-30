@@ -1,7 +1,7 @@
 import { emptySemantics, type Semantics } from './semantics';
 export type ElementKind = 'surface' | 'spring' | 'cable' | 'rectangle' | 'circle' | 'point' | 'line' | 'arrow' | 'dashedArrow' | 'text' | 'latex';
 export interface Graphic {
-  id: string; kind: ElementKind; semanticId?: string;
+  id: string; kind: ElementKind; semanticId?: string; vectorId?: string;
   x: number; y: number; rotation: number; scaleX: number; scaleY: number;
   width: number; height: number; radius: number; points: [number, number, number, number];
   stroke: string; fill: string; strokeWidth: number;
