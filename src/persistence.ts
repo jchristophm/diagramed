@@ -1,5 +1,5 @@
 import { newGraphic, type DiagramDocument } from './model';
-import { canonicalSymbol, propertyDefinitions } from './objects';
+import { canonicalSymbol, propertyDefinitions, propertySigned, categoryNames, categoryProperties } from './objects';
 import type { PropertyQuantity } from './semantics';
 type ObjectValue = Record<string, unknown>;
 function fail(message: string): never { throw new Error(`Cannot open diagram: ${message}`); }
@@ -12,7 +12,7 @@ export function parseDocument(text: string): DiagramDocument {
   let value: unknown; try { value = JSON.parse(text); } catch { fail('file is not valid JSON.'); }
   const d = object(value, 'document');
   if (d.format !== 'diagramed') fail('this is not a Diagramed document.');
-  if (d.version !== 1 && d.version !== 2) fail(`unsupported format version ${String(d.version)}. This editor supports versions 1 and 2.`);
+  if (d.version !== 1 && d.version !== 2 && d.version !== 3) fail(`unsupported format version ${String(d.version)}. This editor supports versions 1, 2 and 3.`);
   string(d.id, 'document identity');
   if (!d.id) fail('document identity cannot be empty.');
   const metadata = object(d.metadata, 'metadata'); for (const key of ['title', 'createdAt', 'updatedAt']) string(metadata[key], `metadata.${key}`);
@@ -24,7 +24,7 @@ export function parseDocument(text: string): DiagramDocument {
   for (const entry of list(p.elements, 'elements')) {
     const e = object(entry, 'element'); string(e.id, 'element identity');
     if (!e.id || ids.has(e.id as string)) fail('element identities must be unique and nonempty.'); ids.add(e.id as string);
-    if (!['rectangle', 'circle', 'point', 'line', 'arrow', 'dashedArrow', 'text', 'latex'].includes(e.kind as string)) fail('unknown graphical element type.');
+    if (!['surface', 'spring', 'cable', 'rectangle', 'circle', 'point', 'line', 'arrow', 'dashedArrow', 'text', 'latex'].includes(e.kind as string)) fail('unknown graphical element type.');
     for (const key of ['x', 'y', 'rotation', 'scaleX', 'scaleY', 'width', 'height', 'radius', 'strokeWidth', 'fontSize']) number(e[key], `element.${key}`, ['width', 'height', 'radius', 'fontSize'].includes(key));
     if (e.scaleX === 0 || e.scaleY === 0 || (e.strokeWidth as number) < 0) fail('invalid element scale or stroke width.');
     for (const key of ['stroke', 'fill', 'text', 'latex', 'fontFamily']) string(e[key], `element.${key}`);
@@ -56,7 +56,7 @@ export function parseDocument(text: string): DiagramDocument {
   const result = structuredClone(value) as DiagramDocument;
   if (d.version === 1) {
     // Upgrade only explicit semantic definitions. Never tag legacy drawing primitives.
-    result.version = 2;
+    result.version = 3;
     for (const physical of result.semantics.objects) {
       for (const [key, id] of Object.entries(physical.properties || {})) {
         const variable = result.semantics.variables.find(v => v.id === id);
@@ -73,6 +73,8 @@ export function parseDocument(text: string): DiagramDocument {
       graphic.label ??= { showName: true, showProperties: true, offsetX: 24, offsetY: 24 };
     }
   }
+  result.version = 3;
+  for(const physical of result.semantics.objects){physical.category ??= 'ordinary';}
   validateRelationships(result);
   return result;
 }
@@ -82,17 +84,20 @@ function validateRelationships(doc: DiagramDocument) {
   const symbols = new Set<string>();
   const referenced = new Set<string>();
   for (const object of objects.values()) {
+    if(!object.category || !Object.hasOwn(categoryNames,object.category))fail('unsupported object category.');
+    if(object.category==='chargedPlate' && !['positive','negative'].includes(object.polarity || ''))fail('invalid plate polarity.');
     if (!object.name.trim() || object.name.length > 120) fail('object names must be nonempty and at most 120 characters.');
     for (const [key, id] of Object.entries(object.properties || {})) {
-      if (!(Object.hasOwn(propertyDefinitions, key))) fail('unsupported object property.');
+      if (!(Object.hasOwn(propertyDefinitions, key)) || !categoryProperties[object.category!].includes(key as PropertyQuantity)) fail('unsupported object property.');
       const variable = variables.get(id);
       if (!variable || variable.ownerObjectId !== object.id || variable.quantity !== key) fail('property variable ownership or quantity reference is invalid.');
       if (referenced.has(id)) fail('each property variable must have one owning object.'); referenced.add(id);
     }
     const graphics = doc.presentation.elements.filter(e => e.semanticId === object.id);
     if (graphics.length !== 1) fail('each physical object requires exactly one saved graphical configuration, including hidden objects.');
-    if (!['circle','rectangle','point'].includes(graphics[0].kind) || typeof graphics[0].visible !== 'boolean' || !graphics[0].label) fail('object graphical configuration is incomplete or incompatible.');
+    if (!['circle','rectangle','point','surface','spring','cable'].includes(graphics[0].kind) || typeof graphics[0].visible !== 'boolean' || !graphics[0].label) fail('object graphical configuration is incomplete or incompatible.');
   }
+  for(const physical of objects.values()){const g=doc.presentation.elements.find(e=>e.semanticId===physical.id)!; const expected=['planetSurface','chargedPlate','fluid'].includes(physical.category!)?'surface':physical.category==='spring'?'spring':physical.category==='cable'?'cable':physical.category==='spatialPoint'?'point':undefined;if(expected && g.kind!==expected)fail('incompatible category representation.');if(g.kind==='surface' && (g.x!==0 || g.width!==doc.presentation.canvas.width || g.y<0 || g.y>=doc.presentation.canvas.height || g.height!==doc.presentation.canvas.height-g.y || g.rotation!==0 || g.scaleX!==1 || g.scaleY!==1))fail('invalid anchored surface geometry.');const v=variables.get(physical.properties?.surfaceChargeDensity || '');if(v?.state==='known' && v.value!==0 && (v.value!<0)!==(physical.polarity==='negative'))fail('plate polarity contradicts surface charge density.');}
   for (const variable of variables.values()) {
     const symbol = canonicalSymbol(variable.symbol); if (!symbol) fail('variable symbol cannot be empty.');
     if (variable.quantity && variable.symbol.length > 80) fail('property symbols must be at most 80 characters.');
@@ -103,7 +108,7 @@ function validateRelationships(doc: DiagramDocument) {
       if (!definition || !definition.units.includes(variable.unit || '')) fail('property unit does not match its quantity.');
       if (variable.state !== 'known' && variable.state !== 'unknown') fail('property state must explicitly be known or unknown.');
       if (variable.state === 'unknown' && variable.value !== undefined) fail('an unknown property cannot contain a numerical value.');
-      if (variable.state === 'known' && (variable.value === undefined || !Number.isFinite(variable.value) || (variable.quantity !== 'charge' && variable.value < 0))) fail('known property requires a finite appropriate numerical value.');
+      if (variable.state === 'known' && (variable.value === undefined || !Number.isFinite(variable.value) || (!propertySigned(variable.quantity as PropertyQuantity) && variable.value < 0))) fail('known property requires a finite appropriate numerical value.');
     }
   }
   for (const e of doc.presentation.elements) if (e.semanticId && !objects.has(e.semanticId)) fail('graphical element references a missing physical object.');

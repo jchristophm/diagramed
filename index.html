@@ -8,9 +8,11 @@
 <input id="file-input" type="file" accept=".json,application/json" hidden><p id="status" role="status" aria-live="polite"></p>
 <dialog id="object-dialog" aria-labelledby="object-title"><form id="object-form">
 <h2 id="object-title">Define object</h2>
-<label>Start with <select id="object-preset"><option value="custom">Custom object</option><option value="earth">Earth</option></select></label>
+<label>Start with <select id="object-preset"><option value="custom">Custom object</option></select></label>
+<label>Category <select id="object-category"></select></label>
+<label id="polarity-label">Polarity <select id="object-polarity"><option value="positive">Positive</option><option value="negative">Negative</option></select></label>
 <label>Name <input id="object-name" required maxlength="120" autocomplete="off"></label>
-<label>Representation <select id="object-representation"><option value="circle">Circle</option><option value="rectangle">Rectangle</option><option value="point">Point</option><option value="none">No visible representation</option></select></label>
+<label>Representation <select id="object-representation"><option value="circle">Circle</option><option value="rectangle">Rectangle</option><option value="point">Point</option><option value="surface">Surface</option><option value="spring">Spring</option><option value="cable">Cable</option><option value="none">No visible representation</option></select></label>
 <p class="hint">All representations describe point-like physical objects.</p>
 <div id="property-fields"></div>
 <label class="check"><input id="show-name" type="checkbox" checked>Show name label</label>

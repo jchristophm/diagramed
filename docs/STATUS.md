@@ -21,3 +21,7 @@ The authoritative document store owns semantic objects and independent graphical
 
 Actual mobile touchscreen acceptance is reserved for the user. There is no autosave, undo, unit conversion, physics solving, force creation, Mathed integration, server storage or image export. Existing legacy graphics remain editable, but generic creation is removed. The cloud proxy may require a temporary local browser ignoreHTTPSErrors setting for live tests; the committed browser configuration does not disable certificate checks.
 
+
+## Contract 3 in progress
+
+Object categories, specialized presets/renderers and version 3 object persistence are implemented. 24 unit tests and TypeScript/production build pass. Local Chromium cannot launch because this execution environment denies its socket operation; desktop/mobile browser verification is delegated to the existing GitHub Actions workflow. Checkpoint 1 is pending that browser result. Checkpoints 2–5 remain unfinished. Resume from development; do not touch main or Problemly.

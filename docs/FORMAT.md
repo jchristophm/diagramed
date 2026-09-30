@@ -35,3 +35,9 @@ Limits: 10 MB JSON, 5,000 entries per array, 100,000 characters per general text
 Download is UTF-8 application/json, two-space indentation and `.diagramed.json` extension. Serialization itself does not update metadata. Round-trip equivalence preserves physical definitions, identities, property values/states, graphical geometry, order, visibility, label configuration and editability; JSON whitespace/order is not significant.
 
 The retained `examples/representative.diagramed.json` is a genuine v1 fixture. `examples/semantic-objects.diagramed.json` demonstrates v2 Rock, Table and hidden Earth.
+
+## Contract 3 format extension (version 3)
+
+New documents use version 3. Versions 1/2 migrate explicit object categories to `ordinary`, preserving names, identities, properties and geometry. Historical Earth and graphical point objects are never reinterpreted. Object category is independent of name and shape. Specialized categories are spatialPoint, planetSurface, spring, cable, chargedPlate and fluid. The property registry adds gravity, springConstant, extension and surfaceChargeDensity, with quantity-specific units. Charge, extension and surface charge density permit signed values. Plates store explicit polarity and reject contradictory known signed density.
+
+Surface graphics use full canvas width, x=0, unrotated unit scale, y at their upper boundary and height=canvas.height-y. Spring/cable graphics store two independently editable local endpoints. Every hidden object retains one configuration. No physical quantities are inferred from graphical geometry.

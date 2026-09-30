@@ -42,14 +42,21 @@ export class DiagramRenderer {
     for (let x = 0; x < canvas.width; x += grid.size) this.grid.add(new Konva.Line({ points: [x, 0, x, canvas.height], stroke: '#eee', strokeWidth: 1 }));
     for (let y = 0; y < canvas.height; y += grid.size) this.grid.add(new Konva.Line({ points: [0, y, canvas.width, y], stroke: '#eee', strokeWidth: 1 }));
     this.grid.visible(grid.visible);
-    for (const e of elements) await this.addNode(e);
+    for (const e of [...elements.filter(e=>e.kind==='surface'),...elements.filter(e=>e.kind!=='surface')]) await this.addNode(e);
     this.fit(); this.stage.draw();
   }
   async addNode(e: Graphic) {
     if (e.visible === false) return;
     const base = { id: e.id, x: e.x, y: e.y, rotation: e.rotation, scaleX: e.scaleX, scaleY: e.scaleY, stroke: e.stroke, strokeWidth: e.strokeWidth, strokeScaleEnabled: !e.semanticId, fill: e.fill, draggable: true };
     let node: Konva.Shape;
-    if (e.kind === 'rectangle') node = new Konva.Rect({ ...base, width: e.width, height: e.height });
+    if(e.kind==='surface'){
+      node=new Konva.Rect({...base,width:e.width,height:e.height,draggable:true});
+      node.hitFunc((context,shape)=>{context.beginPath();context.rect(0,-10,e.width,20);context.closePath();context.fillStrokeShape(shape);});
+      const physical=this.store.document.semantics.objects.find(o=>o.id===e.semanticId);
+      if(physical?.category==='chargedPlate')node.sceneFunc((context,shape)=>{const rect=shape as Konva.Rect;context.beginPath();context.rect(0,0,rect.width(),rect.height());context.closePath();context.fillStrokeShape(shape);context.setAttr('fillStyle','#555');context.setAttr('font','18px Arial');for(let x=20;x<rect.width();x+=40)context.fillText(physical.polarity==='negative'?'−':'+',x,24);});
+    }
+    else if(['spring','cable'].includes(e.kind)){node=new Konva.Line({...base,points:e.points,hitStrokeWidth:20});if(e.kind==='spring')node.sceneFunc((context,shape)=>{const [x1,y1,x2,y2]=(shape as Konva.Line).points(),dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy)||1;context.beginPath();context.moveTo(x1,y1);for(let i=1;i<16;i++){const t=i/16,offset=i%2?7:-7;context.lineTo(x1+dx*t-dy/len*offset,y1+dy*t+dx/len*offset);}context.lineTo(x2,y2);context.strokeShape(shape);});}
+    else if (e.kind === 'rectangle') node = new Konva.Rect({ ...base, width: e.width, height: e.height });
     else if (e.kind === 'circle' || e.kind === 'point') node = new Konva.Circle({ ...base, radius: e.radius, hitStrokeWidth: e.kind === 'point' ? 28 : 2 });
     else if (e.kind === 'line') node = new Konva.Line({ ...base, points: e.points, hitStrokeWidth: 20 });
     else if (e.kind === 'arrow' || e.kind === 'dashedArrow') node = new Konva.Arrow({ ...base, points: e.points, fill: e.stroke, pointerLength: 10, pointerWidth: 10, hitStrokeWidth: 20, dash: e.kind === 'dashedArrow' ? [6, 4] : [] });
@@ -65,8 +72,8 @@ export class DiagramRenderer {
     if (e.semanticId) await this.addLabel(e);
     node.on('click tap', () => this.select(e.id));
     node.on('dblclick dbltap', () => { if (e.semanticId || e.kind === 'text' || e.kind === 'latex') this.onEdit(this.element(e.id)!); });
-    node.on('dragmove', () => { node.position({ x: this.snap(node.x()), y: this.snap(node.y()) }); this.positionLabel(e.id); });
-    node.on('dragend', () => { this.store.update(e.id, { x: node.x(), y: node.y() }); this.select(e.id); });
+    node.on('dragmove', () => { if(e.kind==='surface'){node.position({x:0,y:Math.max(0,Math.min(this.store.document.presentation.canvas.height-20,this.snap(node.y())))});(node as Konva.Rect).height(this.store.document.presentation.canvas.height-node.y());}else node.position({ x: this.snap(node.x()), y: this.snap(node.y()) }); this.positionLabel(e.id); });
+    node.on('dragend', () => { this.store.update(e.id, { x: node.x(), y: node.y(),...(e.kind==='surface'?{height:this.store.document.presentation.canvas.height-node.y()}: {}) }); this.select(e.id); });
     node.on('transformend', () => {
       const patch = { x: this.snap(node.x()), y: this.snap(node.y()), rotation: node.rotation(), scaleX: node.scaleX(), scaleY: node.scaleY() };
       node.position({ x: patch.x, y: patch.y }); this.store.update(e.id, patch); this.positionLabel(e.id); this.select(e.id);
@@ -105,7 +112,7 @@ export class DiagramRenderer {
     if (!id) { this.stage.batchDraw(); return; }
     const e = this.element(id), node = this.nodes.get(id);
     if (!e || !node) return;
-    if (['line', 'arrow', 'dashedArrow'].includes(e.kind)) {
+    if (['line', 'arrow', 'dashedArrow','spring','cable'].includes(e.kind)) {
       node.stroke('orange'); node.draggable(false);
       for (const index of [0, 2]) {
         const abs = node.getAbsoluteTransform().copy(); const scale = this.stage.scaleX();
@@ -122,7 +129,7 @@ export class DiagramRenderer {
         handle.on('dragmove', () => move(handle)); hit.on('dragmove', () => move(hit));
         this.controls.add(handle, hit);
       }
-    } else if (e.kind === 'point') { node.stroke('orange'); } else {
+    } else if (e.kind === 'surface' || e.kind === 'point') { node.stroke('orange'); } else {
       if (e.kind !== 'text' && e.kind !== 'latex') node.stroke('orange');
       this.transformer.keepRatio(e.kind !== 'rectangle');
       if (e.kind === 'circle' && e.semanticId) this.transformer.enabledAnchors(['top-left','top-right','bottom-left','bottom-right']);

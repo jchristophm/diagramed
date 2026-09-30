@@ -1,14 +1,14 @@
 import katex from 'katex';
-import { propertyDefinitions, type ObjectDraft, type PropertyDraft } from './objects';
-import type { PropertyQuantity } from './semantics';
+import { propertyDefinitions, categoryProperties, type ObjectDraft, type PropertyDraft } from './objects';
+import type { PropertyQuantity, ObjectCategory } from './semantics';
 /** Form fields are draft state only; the registry is updated on confirmation. */
-export function showPropertyFields(host: HTMLElement, properties: ObjectDraft['properties'] = {}) {
+export function showPropertyFields(host: HTMLElement, properties: ObjectDraft['properties'] = {}, category: ObjectCategory = 'ordinary') {
   host.replaceChildren();
   for (const [key, definition] of Object.entries(propertyDefinitions)) {
     const property = properties[key as PropertyQuantity];
     const fieldset = document.createElement('fieldset'); fieldset.dataset.quantity = key;
     const heading = document.createElement('label'); heading.className = 'check';
-    const enabled = document.createElement('input'); enabled.type = 'checkbox'; enabled.id = `${key}-enabled`; enabled.checked = !!property;
+    const enabled = document.createElement('input'); enabled.type = 'checkbox'; enabled.id = `${key}-enabled`; enabled.checked = !!property; enabled.disabled = !categoryProperties[category].includes(key as PropertyQuantity);
     heading.append(enabled, document.createTextNode(definition.name)); fieldset.append(heading);
     const details = document.createElement('div'); details.className = 'property-details';
     const symbol = document.createElement('input'); symbol.id = `${key}-symbol`; symbol.value = property?.symbol || definition.symbol; symbol.maxLength = 80; symbol.autocomplete = 'off';

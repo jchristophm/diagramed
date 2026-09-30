@@ -7,7 +7,7 @@ describe('native documents', () => {
   it('upgrades a genuine Phase 1 fixture without changing or tagging its graphics', () => {
     const legacy = JSON.parse(readFileSync('examples/representative.diagramed.json','utf8'));
     expect(legacy.version).toBe(1);
-    const result = parseDocument(JSON.stringify(legacy)); expect(result.version).toBe(2);
+    const result = parseDocument(JSON.stringify(legacy)); expect(result.version).toBe(3);
     expect(result.presentation).toEqual(legacy.presentation); expect(result.semantics).toEqual(legacy.semantics); expect(result.metadata).toEqual(legacy.metadata);
     expect(result.presentation.elements.every(e => e.semanticId === undefined)).toBe(true);
     expect(parseDocument(serializeDocument(result))).toEqual(result);
@@ -27,7 +27,7 @@ describe('native documents', () => {
       const e = newGraphic(kind, doc); Object.assign(e, { x: 123, y: 245, rotation: 37, scaleX: 1.5, scaleY: .8, points: [-20, 30, 150, -70], latex: '\\vec{F}=m\\vec{a}', text: '<label> α', width: 90, height: 130, radius: 30 }); doc.presentation.elements.push(e);
     }
     doc.semantics.variables.push({ id: 'mass', symbol: 'm', value: 4, unit: 'kg', quantity: 'mass', ownerObjectId: 'body', state: 'known' });
-    doc.semantics.objects.push({ id: 'body', name: 'Body', properties: { mass: 'mass' } });
+    doc.semantics.objects.push({ id: 'body', category: 'ordinary', name: 'Body', properties: { mass: 'mass' } });
     Object.assign(doc.presentation.elements[0], { semanticId: 'body', visible: true, label: { showName: true, showProperties: true, offsetX: 24, offsetY: 24 } });
     const reopened = parseDocument(serializeDocument(doc));
     expect(reopened).toEqual(doc); expect(parseDocument(serializeDocument(reopened))).toEqual(doc);

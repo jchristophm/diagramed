@@ -1,21 +1,29 @@
 import { DocumentStore, newGraphic, type Graphic } from './model';
 import { attachmentPoint } from './geometry';
-import type { PropertyQuantity, Variable } from './semantics';
+import type { PropertyQuantity, Variable, ObjectCategory } from './semantics';
 export const propertyDefinitions = {
   mass: { name: 'Mass', symbol: 'm', units: ['kg', 'g'] },
   charge: { name: 'Electric charge', symbol: 'q', units: ['C', 'mC', 'µC', 'nC'] },
-  density: { name: 'Density', symbol: '\\rho', units: ['kg/m^3', 'g/cm^3'] }
+  density: { name: 'Density', symbol: '\\rho', units: ['kg/m^3', 'g/cm^3'] },
+  gravity: { name: 'Gravitational field strength', symbol: 'g', units: ['m/s^2', 'N/kg'] },
+  springConstant: { name: 'Spring constant', symbol: 'k', units: ['N/m'] },
+  extension: { name: 'Extension / compression', symbol: '\\Delta x', units: ['m', 'cm'] },
+  surfaceChargeDensity: { name: 'Surface charge density', symbol: '\\sigma', units: ['C/m^2', 'µC/m^2'] }
 } satisfies Record<PropertyQuantity, { name: string; symbol: string; units: string[] }>;
 export interface PropertyDraft { symbol: string; state: 'known' | 'unknown'; unit: string; value?: number }
 export function canonicalSymbol(symbol: string) { return symbol.trim().replace(/\s|[{}]/g, ''); }
-export type Representation = 'circle' | 'rectangle' | 'point' | 'none';
-export const objectPresets = [{ key: 'earth', name: 'Earth', representation: 'none' as Representation }];
+export type Representation = 'circle' | 'rectangle' | 'point' | 'surface' | 'spring' | 'cable' | 'none';
+export const categoryNames: Record<ObjectCategory,string> = {ordinary:'Ordinary physical object',spatialPoint:'Spatial point',planetSurface:'Planet Surface',spring:'Spring',cable:'String/Cable',chargedPlate:'Charged Plate',fluid:'Fluid'};
+export const categoryProperties: Record<ObjectCategory,PropertyQuantity[]> = {ordinary:['mass','charge','density'],spatialPoint:['charge'],planetSurface:['gravity'],spring:['springConstant','extension'],cable:[],chargedPlate:['surfaceChargeDensity'],fluid:['density']};
+export function propertySigned(key: PropertyQuantity) { return ['charge','extension','surfaceChargeDensity'].includes(key); }
+export function presetDraft(category: ObjectCategory): ObjectDraft { const properties: ObjectDraft['properties']={}; if(category==='planetSurface')properties.gravity={symbol:'g',state:'known',unit:'m/s^2',value:9.8}; if(category==='fluid')properties.density={symbol:'\\rho',state:'known',unit:'kg/m^3',value:1000}; return {name:category==='fluid'?'Water':categoryNames[category],category,representation:category==='planetSurface'?'none':category==='spatialPoint'?'point':['chargedPlate','fluid'].includes(category)?'surface':category==='spring'?'spring':category==='cable'?'cable':'circle',polarity:'positive',showName:true,showProperties:true,properties}; }
+export const objectPresets = (Object.keys(categoryNames) as ObjectCategory[]).filter(key=>key!=='ordinary').map(key=>({key,...presetDraft(key)}));
 export function setObjectVisibility(store: DocumentStore, id: string, visible: boolean) {
   const graphic = objectGraphic(store, id);
   if (!graphic) throw new Error('This object has no saved graphical configuration. Edit its definition to choose a representation.');
   store.update(graphic.id, { visible });
 }
-export interface ObjectDraft { id?: string; name: string; representation: Representation; showName: boolean; showProperties: boolean; properties?: Partial<Record<PropertyQuantity, PropertyDraft>> }
+export interface ObjectDraft { category?: ObjectCategory; polarity?: 'positive' | 'negative'; id?: string; name: string; representation: Representation; showName: boolean; showProperties: boolean; properties?: Partial<Record<PropertyQuantity, PropertyDraft>> }
 export function objectGraphic(store: DocumentStore, id: string) { return store.document.presentation.elements.find(e => e.semanticId === id); }
 export function saveObject(store: DocumentStore, draft: ObjectDraft): string {
   const name = draft.name.trim(); if (!name) throw new Error('Give this object a name.');
@@ -24,6 +32,11 @@ export function saveObject(store: DocumentStore, draft: ObjectDraft): string {
   const existing = draft.id ? next.semantics.objects.find(o => o.id === draft.id) : undefined;
   if (draft.id && !existing) throw new Error('This object no longer exists.');
   const id = existing?.id || crypto.randomUUID();
+  const category = draft.category || existing?.category || 'ordinary';
+  if (!Object.hasOwn(categoryNames, category)) throw new Error('Unsupported object category.');
+  if(existing && category !== (existing.category || 'ordinary')) throw new Error('Object category cannot be changed.');
+  const polarity = draft.polarity || existing?.polarity || 'positive';
+  if(!['positive','negative'].includes(polarity))throw new Error('Invalid plate polarity.');
   const previousProperties = existing?.properties || {};
   if (draft.properties !== undefined) {
     const previousIds = new Set(Object.values(previousProperties));
@@ -34,7 +47,8 @@ export function saveObject(store: DocumentStore, draft: ObjectDraft): string {
     const registry = next.semantics.variables.filter(v => !previousIds.has(v.id));
     for (const [quantity, property] of Object.entries(draft.properties)) {
       if (!property || !(Object.hasOwn(propertyDefinitions, quantity))) throw new Error('Unsupported physical property.');
-      const key = quantity as PropertyQuantity, definition = propertyDefinitions[key], symbol = property.symbol.trim();
+      const key = quantity as PropertyQuantity; if(!categoryProperties[category].includes(key))throw new Error('Property is unavailable for this category.');
+      const definition = propertyDefinitions[key], symbol = property.symbol.trim();
       if (!symbol || symbol.length > 80) throw new Error(`${definition.name} needs a symbol (maximum 80 characters).`);
       const conflict = registry.find(v => canonicalSymbol(v.symbol) === canonicalSymbol(symbol));
       if (conflict) {
@@ -43,7 +57,8 @@ export function saveObject(store: DocumentStore, draft: ObjectDraft): string {
       }
       if (!definition.units.includes(property.unit)) throw new Error(`Choose a supported unit for ${definition.name.toLowerCase()}.`);
       if (!['known', 'unknown'].includes(property.state)) throw new Error('Choose Known or Unknown for each property.');
-      if (property.state === 'known' && (property.value === undefined || !Number.isFinite(property.value) || (key !== 'charge' && property.value < 0))) throw new Error(`${definition.name} needs a finite ${key === 'charge' ? '' : 'nonnegative '}numerical value.`);
+      if (property.state === 'known' && (property.value === undefined || !Number.isFinite(property.value) || (!propertySigned(key) && property.value < 0))) throw new Error(`${definition.name} needs a finite ${key === 'charge' ? '' : 'nonnegative '}numerical value.`);
+      if(key==='surfaceChargeDensity' && property.state==='known' && property.value!==0 && (property.value! < 0)!==(polarity==='negative')) throw new Error('Plate polarity and signed surface charge density must agree.');
       const variable: Variable = { id: previousProperties[key] || crypto.randomUUID(), ownerObjectId: id, quantity: key, symbol, unit: property.unit, state: property.state };
       if (property.state === 'known') variable.value = property.value;
       definitions[key] = variable.id; registry.push(variable);
@@ -53,9 +68,12 @@ export function saveObject(store: DocumentStore, draft: ObjectDraft): string {
     else next.semantics.objects.push({ id, name, properties: definitions });
   }
   if (existing) existing.name = name; else if (draft.properties === undefined) next.semantics.objects.push({ id, name, properties: {} });
+  const physical = next.semantics.objects.find(o=>o.id===id)!; physical.category=category; if(category==='chargedPlate')physical.polarity=polarity;
   let graphic = next.presentation.elements.find(e => e.semanticId === id);
   if (!graphic) {
-    graphic = newGraphic(draft.representation === 'none' ? 'circle' : draft.representation, next);
+    graphic = newGraphic(draft.representation === 'none' ? (['planetSurface','chargedPlate','fluid'].includes(category)?'surface':category==='spring'?'spring':category==='cable'?'cable':'circle') : draft.representation, next);
+    if(graphic.kind==='surface'){graphic.x=0;graphic.y=next.presentation.canvas.height*.72;graphic.width=next.presentation.canvas.width;graphic.height=next.presentation.canvas.height-graphic.y;}
+    if(['spring','cable'].includes(graphic.kind))graphic.points=[-80,0,80,0];
     graphic.semanticId = id; graphic.stroke = '#333'; graphic.fill = 'transparent';
     next.presentation.elements.push(graphic);
   }
@@ -68,6 +86,9 @@ export function saveObject(store: DocumentStore, draft: ObjectDraft): string {
   }
   if (graphic.kind === 'point') { graphic.radius = 4; graphic.fill = '#333'; }
   else graphic.fill = 'transparent';
+  const expected = ['planetSurface','chargedPlate','fluid'].includes(category)?'surface':category==='spring'?'spring':category==='cable'?'cable':category==='spatialPoint'?'point':undefined;
+  if(expected && graphic.kind!==expected)throw new Error('Representation does not match this object category.');
+  if(graphic.kind==='surface'){graphic.x=0;graphic.width=next.presentation.canvas.width;graphic.height=next.presentation.canvas.height-graphic.y;graphic.fill=category==='fluid'?'rgba(65,150,240,0.3)':category==='planetSurface'?'#b8ac98':'#ddd';}
   graphic.visible = draft.representation !== 'none';
   graphic.label = { showName: draft.showName, showProperties: draft.showProperties, offsetX: graphic.label?.offsetX ?? 24, offsetY: graphic.label?.offsetY ?? 24 };
   next.metadata.updatedAt = new Date().toISOString(); store.replace(next); return id;
@@ -91,5 +112,5 @@ export function objectDraft(store: DocumentStore, id?: string): ObjectDraft {
     const variable = store.document.semantics.variables.find(v => v.id === variableId);
     if (variable) properties[key as PropertyQuantity] = { symbol: variable.symbol, unit: variable.unit || propertyDefinitions[key as PropertyQuantity].units[0], state: variable.state || (variable.value === undefined ? 'unknown' : 'known'), value: variable.value };
   }
-  return { id, name: object?.name || '', representation: g?.visible === false ? 'none' : (g?.kind as Representation) || 'circle', showName: g?.label?.showName ?? true, showProperties: g?.label?.showProperties ?? true, properties };
+  return { id, category:object?.category || 'ordinary',polarity:object?.polarity || 'positive', name: object?.name || '', representation: g?.visible === false ? 'none' : (g?.kind as Representation) || 'circle', showName: g?.label?.showName ?? true, showProperties: g?.label?.showProperties ?? true, properties };
 }

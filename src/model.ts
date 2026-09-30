@@ -1,5 +1,5 @@
 import { emptySemantics, type Semantics } from './semantics';
-export type ElementKind = 'rectangle' | 'circle' | 'point' | 'line' | 'arrow' | 'dashedArrow' | 'text' | 'latex';
+export type ElementKind = 'surface' | 'spring' | 'cable' | 'rectangle' | 'circle' | 'point' | 'line' | 'arrow' | 'dashedArrow' | 'text' | 'latex';
 export interface Graphic {
   id: string; kind: ElementKind; semanticId?: string;
   x: number; y: number; rotation: number; scaleX: number; scaleY: number;
@@ -10,14 +10,14 @@ export interface Graphic {
   label?: { showName: boolean; showProperties: boolean; offsetX: number; offsetY: number };
 }
 export interface DiagramDocument {
-  format: 'diagramed'; version: 2; id: string;
+  format: 'diagramed'; version: 3; id: string;
   metadata: { title: string; createdAt: string; updatedAt: string };
   semantics: Semantics;
   presentation: { canvas: { width: number; height: number }; grid: { size: number; visible: boolean }; elements: Graphic[] };
 }
 export function newDocument(width = 800, height = 600): DiagramDocument {
   const now = new Date().toISOString();
-  return { format: 'diagramed', version: 2, id: crypto.randomUUID(), metadata: { title: 'Untitled diagram', createdAt: now, updatedAt: now }, semantics: emptySemantics(), presentation: { canvas: { width, height }, grid: { size: 20, visible: true }, elements: [] } };
+  return { format: 'diagramed', version: 3, id: crypto.randomUUID(), metadata: { title: 'Untitled diagram', createdAt: now, updatedAt: now }, semantics: emptySemantics(), presentation: { canvas: { width, height }, grid: { size: 20, visible: true }, elements: [] } };
 }
 export function newGraphic(kind: ElementKind, doc: DiagramDocument): Graphic {
   const { width, height } = doc.presentation.canvas;

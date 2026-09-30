@@ -3,12 +3,16 @@ import { showPropertyFields, readPropertyFields } from './property-form';
 import { DocumentStore, newDocument, type Graphic } from './model';
 import { DiagramRenderer } from './renderer';
 import { parseDocument, downloadDocument } from './persistence';
-import { saveObject, deleteObject, objectDraft, objectGraphic, setObjectVisibility, objectPresets, type Representation } from './objects';
+import { saveObject, deleteObject, objectDraft, objectGraphic, setObjectVisibility, objectPresets, categoryNames, presetDraft, type Representation } from './objects';
+import type { ObjectCategory } from './semantics';
 const $ = <T extends HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
 const container = $<HTMLDivElement>('#container');
 const store = new DocumentStore(newDocument(container.clientWidth || 800, container.clientHeight || 600));
 const renderer = new DiagramRenderer(store, container);
 const dialog = $<HTMLDialogElement>('#object-dialog'), status = $('#status');
+for(const [key,name] of Object.entries(categoryNames)){const option=document.createElement('option');option.value=key;option.textContent=name;$<HTMLSelectElement>('#object-category').append(option);}
+for(const preset of objectPresets){const option=document.createElement('option');option.value=preset.key;option.textContent=categoryNames[preset.key];$<HTMLSelectElement>('#object-preset').append(option);}
+function configureCategory(category:ObjectCategory){ $<HTMLSelectElement>('#object-category').value=category; $('#polarity-label').hidden=category!=='chargedPlate';const rep=$<HTMLSelectElement>('#object-representation');const specific=['planetSurface','chargedPlate','fluid'].includes(category)?'surface':category==='spatialPoint'?'point':category==='spring'?'spring':category==='cable'?'cable':undefined;for(const option of rep.options)option.disabled=option.value!=='none' && (specific?option.value!==specific:['surface','spring','cable'].includes(option.value));}
 let editingId: string | undefined;
 let selectedObjectId: string | undefined;
 let legacy: Graphic | undefined;
@@ -22,7 +26,7 @@ function openObject(id?: string) {
   editingId = id;
   $<HTMLSelectElement>('#object-preset').value = 'custom';
   $<HTMLSelectElement>('#object-preset').disabled = !!id;
-  const draft = objectDraft(store, id);
+  const draft = objectDraft(store, id); configureCategory(draft.category!);$<HTMLSelectElement>('#object-category').disabled=!!id;$<HTMLSelectElement>('#object-polarity').value=draft.polarity!;
   $<HTMLInputElement>('#object-name').value = draft.name;
   $<HTMLSelectElement>('#object-representation').value = draft.representation;
   $<HTMLInputElement>('#show-name').checked = draft.showName;
@@ -30,21 +34,20 @@ function openObject(id?: string) {
   $('#object-title').textContent = id ? 'Edit object' : 'Define object';
   $('#save-object').textContent = id ? 'Save object' : 'Create object';
   $('#object-error').textContent = '';
-  showPropertyFields($('#property-fields'), draft.properties);
+  showPropertyFields($('#property-fields'), draft.properties,draft.category);
   dialog.showModal();
 }
 $('#cancel-object').addEventListener('click', () => dialog.close());
 $('#object-form').addEventListener('submit', async event => {
   event.preventDefault(); if (busy) return; busy = true;
   try {
-    const id = saveObject(store, { id: editingId, name: $<HTMLInputElement>('#object-name').value, representation: $<HTMLSelectElement>('#object-representation').value as Representation, showName: $<HTMLInputElement>('#show-name').checked, showProperties: $<HTMLInputElement>('#show-properties').checked, properties: readPropertyFields($('#property-fields')) });
+    const id = saveObject(store, { id: editingId,category:$<HTMLSelectElement>('#object-category').value as ObjectCategory,polarity:$<HTMLSelectElement>('#object-polarity').value as 'positive'|'negative', name: $<HTMLInputElement>('#object-name').value, representation: $<HTMLSelectElement>('#object-representation').value as Representation, showName: $<HTMLInputElement>('#show-name').checked, showProperties: $<HTMLInputElement>('#show-properties').checked, properties: readPropertyFields($('#property-fields')) });
     await renderer.render(); selectObject(id); dialog.close();
   } catch (error) { $('#object-error').textContent = error instanceof Error ? error.message : String(error); } finally { busy = false; }
 });
-$<HTMLSelectElement>('#object-preset').addEventListener('change', event => {
-  const preset = objectPresets.find(p => p.key === (event.target as HTMLSelectElement).value);
-  if (preset) { $<HTMLInputElement>('#object-name').value = preset.name; $<HTMLSelectElement>('#object-representation').value = preset.representation; showPropertyFields($('#property-fields')); }
-});
+function applyPreset(category:ObjectCategory){const draft=presetDraft(category);configureCategory(category);$<HTMLInputElement>('#object-name').value=draft.name;$<HTMLSelectElement>('#object-representation').value=draft.representation;$<HTMLSelectElement>('#object-polarity').value=draft.polarity!;showPropertyFields($('#property-fields'),draft.properties,category);}
+$<HTMLSelectElement>('#object-preset').addEventListener('change',event=>{const key=(event.target as HTMLSelectElement).value;if(key==='custom')applyPreset('ordinary');else applyPreset(key as ObjectCategory);});
+$<HTMLSelectElement>('#object-category').addEventListener('change',event=>applyPreset((event.target as HTMLSelectElement).value as ObjectCategory));
 function showCollection() {
   const host = $('#object-list'); host.replaceChildren();
   if (!store.document.semantics.objects.length) { const empty=document.createElement('p');empty.textContent='No objects yet. Use Object to define one.';host.append(empty); }
