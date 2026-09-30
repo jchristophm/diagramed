@@ -29,3 +29,7 @@ Object categories, specialized presets/renderers and version 3 object persistenc
 Checkpoint 1 confirmed: GitHub Actions run 36749778933 passed all 24 unit tests, build and 12 desktop/mobile browser tests and deployed successfully (commit 7e10c90a11811f1f67dcdc160fb75df3d9f18196). The first candidate failed only because a regression test assumed variable array order; it now checks persistent IDs.
 
 Checkpoint 2 candidate: canonical constants, interaction-owned quantities, separation commands and UI, constrained endpoint attachment, visibility, abbreviations and ownership validation are implemented. 27 unit tests and build pass. Browser tests will run in GitHub Actions. Full force/field/motion UI and expressions remain unfinished.
+
+Checkpoint 2 verified and deployed: 40998b5ec279b25eb505327f0913c542148b9dd7, GitHub Actions run 36750432191. Unit/build and 14 desktop/mobile browser tests passed.
+
+Checkpoint 3 candidate adds all semantic force categories, fields and motion vectors, reusable deterministic eligibility, linked normal/friction/resultant graphics, magnitude editing and collections. 31 unit tests and production build pass; browser verification is pending this push. Expressions and final acceptance/deployment handoff remain unfinished.
