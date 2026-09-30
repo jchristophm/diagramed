@@ -1,5 +1,6 @@
 /** Physics definitions are independent of graphics. No primitive implies physics. */
-export interface Variable { id: string; symbol: string; value?: number; unit?: string }
+export type PropertyQuantity = 'mass' | 'charge' | 'density';
+export interface Variable { id: string; symbol: string; value?: number; unit?: string; quantity?: PropertyQuantity; state?: 'known' | 'unknown'; ownerObjectId?: string }
 export interface PhysicalObject { id: string; name: string; properties?: Record<string, string> }
 export interface Interaction { id: string; objectIds: string[]; kind: string }
 export interface CoordinateSystem { id: string; dimensions: 1 | 2; origin: [number, number]; angle: number }

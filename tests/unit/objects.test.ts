@@ -3,6 +3,21 @@ import { DocumentStore } from '../../src/model';
 import { saveObject,objectDraft,objectGraphic,deleteObject } from '../../src/objects';
 import { attachmentPoint } from '../../src/geometry';
 describe('semantic object operations',()=>{
+ it('unknown and known properties have stable variable references; undefined is absent',()=>{
+ const store=new DocumentStore();const id=saveObject(store,{name:'Rock',representation:'circle',showName:true,showProperties:true,properties:{mass:{symbol:'m_2',state:'unknown',unit:'kg'}}});
+ const variableId=store.document.semantics.objects[0].properties!.mass;
+ expect(store.document.semantics.variables[0]).toMatchObject({id:variableId,state:'unknown',ownerObjectId:id,quantity:'mass'});expect(store.document.semantics.variables[0]).not.toHaveProperty('value');expect(store.document.semantics.objects[0].properties).not.toHaveProperty('charge');
+ saveObject(store,{...objectDraft(store,id),properties:{mass:{symbol:'M',state:'known',unit:'kg',value:5.97e24}}});
+ expect(store.document.semantics.variables[0]).toMatchObject({id:variableId,symbol:'M',state:'known',value:5.97e24});
+ saveObject(store,{...objectDraft(store,id),properties:{mass:{symbol:'M',state:'unknown',unit:'kg'}}});expect(store.document.semantics.variables[0]).not.toHaveProperty('value');
+ saveObject(store,{...objectDraft(store,id),properties:{}});expect(store.document.semantics.variables).toHaveLength(0);
+ });
+ it('rejects symbol ambiguity atomically and deletes owned variables',()=>{
+ const store=new DocumentStore();const id=saveObject(store,{name:'Rock',representation:'circle',showName:true,showProperties:true,properties:{mass:{symbol:'m_2',state:'unknown',unit:'kg'}}});const before=structuredClone(store.document);
+ expect(()=>saveObject(store,{name:'Other',representation:'point',showName:true,showProperties:true,properties:{mass:{symbol:'m_{2}',state:'known',unit:'kg',value:2}}})).toThrow(/already used/);expect(store.document).toEqual(before);
+ expect(()=>saveObject(store,{...objectDraft(store,id),properties:{density:{symbol:'rho',state:'known',unit:'kg/m^3',value:-1}}})).toThrow(/nonnegative/);expect(store.document).toEqual(before);
+ deleteObject(store,id);expect(store.document.semantics.variables).toHaveLength(0);
+ });
  it('creates independent stable identities and preserves appearance while hidden',()=>{
  const store=new DocumentStore();const id=saveObject(store,{name:'Rock',representation:'circle',showName:true,showProperties:true});
  const g=objectGraphic(store,id)!;expect(g.id).not.toBe(id);store.update(g.id,{x:100,y:240});

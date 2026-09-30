@@ -1,4 +1,5 @@
 import katex from 'katex';
+import { showPropertyFields, readPropertyFields } from './property-form';
 import { DocumentStore, newDocument, type Graphic } from './model';
 import { DiagramRenderer } from './renderer';
 import { parseDocument, downloadDocument } from './persistence';
@@ -24,13 +25,14 @@ function openObject(id?: string) {
   $('#object-title').textContent = id ? 'Edit object' : 'Define object';
   $('#save-object').textContent = id ? 'Save object' : 'Create object';
   $('#object-error').textContent = '';
+  showPropertyFields($('#property-fields'), draft.properties);
   dialog.showModal();
 }
 $('#cancel-object').addEventListener('click', () => dialog.close());
 $('#object-form').addEventListener('submit', async event => {
   event.preventDefault(); if (busy) return; busy = true;
   try {
-    selectedObjectId = saveObject(store, { id: editingId, name: $<HTMLInputElement>('#object-name').value, representation: $<HTMLSelectElement>('#object-representation').value as Representation, showName: $<HTMLInputElement>('#show-name').checked, showProperties: $<HTMLInputElement>('#show-properties').checked });
+    selectedObjectId = saveObject(store, { id: editingId, name: $<HTMLInputElement>('#object-name').value, representation: $<HTMLSelectElement>('#object-representation').value as Representation, showName: $<HTMLInputElement>('#show-name').checked, showProperties: $<HTMLInputElement>('#show-properties').checked, properties: readPropertyFields($('#property-fields')) });
     await renderer.render(); renderer.select(objectGraphic(store, selectedObjectId)?.id || null); dialog.close();
   } catch (error) { $('#object-error').textContent = error instanceof Error ? error.message : String(error); } finally { busy = false; }
 });

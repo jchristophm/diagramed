@@ -38,7 +38,7 @@ export function parseDocument(text: string): DiagramDocument {
       fields[key].forEach(field => string(entry[field], `${key}.${field}`));
       if (key === 'objects' && entry.properties !== undefined) Object.values(object(entry.properties, 'properties')).forEach(v => string(v, 'property variable reference'));
       if (key === 'interactions') list(entry.objectIds, 'interaction objects').forEach(v => string(v, 'object reference'));
-      if (key === 'variables') { if (entry.value !== undefined) number(entry.value, 'variable value'); if (entry.unit !== undefined) string(entry.unit, 'variable unit'); }
+      if (key === 'variables') { if (entry.value !== undefined && (typeof entry.value !== 'number' || !Number.isFinite(entry.value))) fail('variable value must be a finite number.'); if (entry.unit !== undefined) string(entry.unit, 'variable unit'); }
       if (key === 'vectors') { if (!['force', 'field', 'motion'].includes(entry.kind as string)) fail('unknown semantic vector kind.'); for (const f of ['objectId', 'interactionId']) if (entry[f] !== undefined) string(entry[f], f); }
       if (key === 'coordinateSystems') { if (entry.dimensions !== 1 && entry.dimensions !== 2) fail('coordinate system dimension must be 1 or 2.'); const origin = list(entry.origin, 'origin'); if (origin.length !== 2) fail('origin must contain two coordinates.'); origin.forEach(v => number(v, 'origin coordinate')); number(entry.angle, 'coordinate angle'); }
       if (key === 'components' && !['x', 'y'].includes(entry.axis as string)) fail('component axis must be x or y.');
