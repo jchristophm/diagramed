@@ -10,13 +10,13 @@ Repository: https://github.com/jchristophm/diagramed . Working branch: `developm
 4. Browser regression tests, documentation and Pages workflow: `096e8ed16c1e7fcaa6120e1ff69786ed543e1208`, pushed. Eight unit tests and four desktop/mobile browser tests passed locally and in GitHub Actions run 36658435261.
 5. Final handoff commit includes this report, the original development contract and browser tests configured against production assets. Production-build browser tests also pass locally (four tests).
 
-## Remaining blocker
+## Deployment verified
 
-GitHub Actions verify job succeeded. Deploy job failed with HTTP 404 and the explicit instruction to enable GitHub Pages. Open https://github.com/jchristophm/diagramed/settings/pages and choose **GitHub Actions** as the build/deployment source. If prompted about allowed environment branches, allow `development`. Rerun the latest workflow after enabling Pages.
+GitHub Pages was enabled and the development branch was allowed by the environment protection rules. GitHub Actions run 36658620755, attempt 3, completed verification and deployment successfully. Deployed application commit: 5131b382160562409fc5113516ad505a5764e3a8. All four browser acceptance tests passed against the live URL on 2026-09-30 UTC. The cloud test proxy certificate required a temporary local-only ignoreHTTPSErrors setting; the repository's normal browser configuration is unchanged.
 
-Expected development URL after deployment: https://jchristophm.github.io/diagramed/ . It is not yet verified live. After activation, repeat the browser tests with `TEST_URL=https://jchristophm.github.io/diagramed/ npm run test:browser` (requires build only when using the local preview, not this hosted URL). Actual device touch acceptance still requires the user. Pull-request previews are not configured.
+Live development URL: https://jchristophm.github.io/diagramed/ . Verified live. After activation, repeat the browser tests with `TEST_URL=https://jchristophm.github.io/diagramed/ npm run test:browser` (requires build only when using the local preview, not this hosted URL). Actual device touch acceptance still requires the user. Pull-request previews are not configured.
 
-The project is not fully complete until independent deployment and its live acceptance tests pass. Build, document persistence, graphical operations, emulated touch endpoint interaction and production asset checks are complete. Problemly's main commit remains fb432d00f07bcf9d2b386fa4de98d792b823a57f; no write operations targeted Problemly.
+Independent deployment and live acceptance tests have passed. Build, document persistence, graphical operations, emulated touch endpoint interaction and production asset checks are complete. Problemly's main commit remains fb432d00f07bcf9d2b386fa4de98d792b823a57f; no write operations targeted Problemly.
 
 ## Known differences
 
