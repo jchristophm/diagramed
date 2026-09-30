@@ -7,3 +7,16 @@ export function attachmentPoint(graphic: Graphic): { x: number; y: number } {
   const radians = graphic.rotation * Math.PI / 180;
   return { x: graphic.x + localX * graphic.scaleX * Math.cos(radians) - localY * graphic.scaleY * Math.sin(radians), y: graphic.y + localX * graphic.scaleX * Math.sin(radians) + localY * graphic.scaleY * Math.cos(radians) };
 }
+
+/** Screen-upright label anchor; offsets are presentation only, never physical geometry. */
+export function labelPosition(graphic:Graphic,width:number,height:number,offsets=true){
+ const label=graphic.label,center=attachmentPoint(graphic);let x=center.x,y=center.y;
+ if(label?.placement==='objectCenter'){x-=width/2;}
+ else if(label?.placement==='vectorTip'){
+  const a=graphic.rotation*Math.PI/180,dx=(graphic.points[2]-graphic.points[0])*graphic.scaleX,dy=(graphic.points[3]-graphic.points[1])*graphic.scaleY;
+  const vx=dx*Math.cos(a)-dy*Math.sin(a),vy=dx*Math.sin(a)+dy*Math.cos(a),length=Math.hypot(vx,vy)||1,ux=vx/length,uy=vy/length;
+  x=graphic.x+graphic.points[2]*graphic.scaleX*Math.cos(a)-graphic.points[3]*graphic.scaleY*Math.sin(a)+ux*20-uy*14-width/2;
+  y=graphic.y+graphic.points[2]*graphic.scaleX*Math.sin(a)+graphic.points[3]*graphic.scaleY*Math.cos(a)+uy*20+ux*14-height/2;
+ }
+ if(offsets){x+=label?.offsetX??24;y+=label?.offsetY??24;}return {x,y};
+}

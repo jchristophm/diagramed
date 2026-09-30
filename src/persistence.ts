@@ -40,6 +40,7 @@ export function parseDocument(text: string): DiagramDocument {
     if (e.label !== undefined) {
       const label = object(e.label, 'label presentation');
       if (typeof label.showName !== 'boolean' || typeof label.showProperties !== 'boolean') fail('label visibility settings must be true or false.');
+      if(label.placement!==undefined && !['objectCenter','vectorTip'].includes(label.placement as string))fail('unsupported label placement.');
       number(label.offsetX, 'label offset'); number(label.offsetY, 'label offset');
     }
   }
@@ -51,6 +52,8 @@ export function parseDocument(text: string): DiagramDocument {
       if (!entry.id || semanticIds.has(entry.id as string)) fail('semantic identities must be unique and nonempty.'); semanticIds.add(entry.id as string);
       const fields: Record<string, string[]> = { objects: ['name'], interactions: ['kind'], variables: ['symbol'], vectors: ['kind', 'variableId'], coordinateSystems: [], components: ['vectorId', 'coordinateSystemId', 'axis', 'variableId'] };
       fields[key].forEach(field => string(entry[field], `${key}.${field}`));
+      if(key==='objects'){if(entry.abbreviation!==undefined){string(entry.abbreviation,'object abbreviation');if(!/^[a-zA-Z0-9]{1,125}$/.test(entry.abbreviation as string))fail('invalid object abbreviation.');}if(entry.abbreviationName!==undefined)string(entry.abbreviationName,'abbreviation name');}
+      if(key==='variables' && entry.generatedSymbol!==undefined && typeof entry.generatedSymbol!=='boolean')fail('generated notation flag must be boolean.');
       if (key === 'objects' && entry.properties !== undefined) Object.values(object(entry.properties, 'properties')).forEach(v => string(v, 'property variable reference'));
       if (key === 'interactions') list(entry.objectIds, 'interaction objects').forEach(v => string(v, 'object reference'));
       if (key === 'variables') { if (entry.value !== undefined && (typeof entry.value !== 'number' || !Number.isFinite(entry.value))) fail('variable value must be a finite number.'); if (entry.unit !== undefined) string(entry.unit, 'variable unit'); }
