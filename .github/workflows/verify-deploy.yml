@@ -46,3 +46,24 @@ jobs:
       - name: Deploy independent development application
         id: deployment
         uses: actions/deploy-pages@v4
+  live-acceptance:
+    if: github.event_name != 'pull_request'
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Verify deployed development application independently
+        run: npm run test:browser
+        env:
+          TEST_URL: https://jchristophm.github.io/diagramed/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-browser-test-results
+          path: test-results/

@@ -1,4 +1,5 @@
 import { DocumentStore, newGraphic, type Graphic } from './model';
+import {validateRelationships} from './persistence';
 import {assertExpressions,ensureNoReferences} from './expressions';
 import {physicalConstants} from './constants';
 import { synchronizeSymbols } from './naming';
@@ -96,7 +97,7 @@ export function saveObject(store: DocumentStore, draft: ObjectDraft): string {
   if(graphic.kind==='surface'){graphic.x=0;graphic.width=next.presentation.canvas.width;graphic.height=next.presentation.canvas.height-graphic.y;graphic.fill=category==='fluid'?'rgba(65,150,240,0.3)':category==='planetSurface'?'#b8ac98':'#ddd';}
   graphic.visible = draft.representation !== 'none';
   graphic.label = { showName: draft.showName, showProperties: draft.showProperties, offsetX: graphic.label?.offsetX ?? 24, offsetY: graphic.label?.offsetY ?? 24 };
-  next.metadata.updatedAt = new Date().toISOString(); synchronizeSymbols(next); assertExpressions(next); store.replace(next); return id;
+  next.metadata.updatedAt = new Date().toISOString(); synchronizeSymbols(next); assertExpressions(next); validateRelationships(next); store.replace(next); return id;
 }
 export function deleteObject(store: DocumentStore, id: string) {
   const next = structuredClone(store.document);

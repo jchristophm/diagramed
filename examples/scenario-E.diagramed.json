@@ -1,0 +1,314 @@
+{
+  "format": "diagramed",
+  "version": 3,
+  "id": "7f305e8f-bb3f-4eba-9173-e11cde890724",
+  "metadata": {
+    "title": "Scenario E",
+    "createdAt": "2026-09-30T17:44:13.368Z",
+    "updatedAt": "2026-09-30T17:44:13.374Z"
+  },
+  "semantics": {
+    "objects": [
+      {
+        "id": "d1742f41-1b14-4b7d-a6b0-1e761444c0fc",
+        "name": "Spring",
+        "properties": {
+          "springConstant": "59e785cc-eda1-49ab-b972-441d82ad00a0",
+          "extension": "2d084fcd-046a-431b-9353-d3cb67b6009d"
+        },
+        "category": "spring",
+        "abbreviation": "Sp"
+      },
+      {
+        "id": "f2edbb19-cfa8-454d-a162-06c0321275fe",
+        "name": "Block",
+        "properties": {},
+        "category": "ordinary",
+        "abbreviation": "B"
+      },
+      {
+        "id": "bf537881-f74f-4069-b5cb-d62560ca87c7",
+        "name": "String/Cable",
+        "properties": {},
+        "category": "cable",
+        "abbreviation": "St"
+      }
+    ],
+    "interactions": [
+      {
+        "id": "6722b1ba-0ac9-4c87-bc5d-3427409ea5e4",
+        "kind": "contact",
+        "model": "spring",
+        "sourceId": "d1742f41-1b14-4b7d-a6b0-1e761444c0fc",
+        "targetId": "f2edbb19-cfa8-454d-a162-06c0321275fe",
+        "objectIds": [
+          "d1742f41-1b14-4b7d-a6b0-1e761444c0fc",
+          "f2edbb19-cfa8-454d-a162-06c0321275fe"
+        ],
+        "properties": {},
+        "resultantVisible": false
+      },
+      {
+        "id": "7bc33deb-7c33-4320-9826-8ffabf3573bb",
+        "kind": "contact",
+        "model": "cable",
+        "sourceId": "bf537881-f74f-4069-b5cb-d62560ca87c7",
+        "targetId": "f2edbb19-cfa8-454d-a162-06c0321275fe",
+        "objectIds": [
+          "bf537881-f74f-4069-b5cb-d62560ca87c7",
+          "f2edbb19-cfa8-454d-a162-06c0321275fe"
+        ],
+        "properties": {},
+        "resultantVisible": false
+      }
+    ],
+    "variables": [
+      {
+        "id": "59e785cc-eda1-49ab-b972-441d82ad00a0",
+        "ownerObjectId": "d1742f41-1b14-4b7d-a6b0-1e761444c0fc",
+        "quantity": "springConstant",
+        "symbol": "k",
+        "unit": "N/m",
+        "state": "unknown"
+      },
+      {
+        "id": "2d084fcd-046a-431b-9353-d3cb67b6009d",
+        "ownerObjectId": "d1742f41-1b14-4b7d-a6b0-1e761444c0fc",
+        "quantity": "extension",
+        "symbol": "\\Delta x",
+        "unit": "m",
+        "state": "known",
+        "value": -0.1
+      },
+      {
+        "id": "a8b0efdb-df69-4848-9d7c-080535f2d389",
+        "ownerVectorId": "13130fc1-95a9-4778-99f1-80ed2a811b0d",
+        "quantity": "force",
+        "symbol": "F_{Sp,B}",
+        "unit": "N",
+        "state": "expression",
+        "generatedSymbol": true,
+        "expression": {
+          "type": "unary",
+          "op": "abs",
+          "operand": {
+            "type": "binary",
+            "op": "*",
+            "left": {
+              "type": "reference",
+              "id": "59e785cc-eda1-49ab-b972-441d82ad00a0"
+            },
+            "right": {
+              "type": "reference",
+              "id": "2d084fcd-046a-431b-9353-d3cb67b6009d"
+            }
+          }
+        }
+      },
+      {
+        "id": "5b18e0b1-218d-4f1a-ab80-22703911db37",
+        "ownerVectorId": "6c2741e1-8b36-4deb-8cbd-c7c80929c9b6",
+        "quantity": "force",
+        "symbol": "T_{St,B}",
+        "unit": "N",
+        "state": "unknown",
+        "generatedSymbol": true
+      }
+    ],
+    "vectors": [
+      {
+        "id": "13130fc1-95a9-4778-99f1-80ed2a811b0d",
+        "kind": "force",
+        "variableId": "a8b0efdb-df69-4848-9d7c-080535f2d389",
+        "objectId": "f2edbb19-cfa8-454d-a162-06c0321275fe",
+        "interactionId": "6722b1ba-0ac9-4c87-bc5d-3427409ea5e4"
+      },
+      {
+        "id": "6c2741e1-8b36-4deb-8cbd-c7c80929c9b6",
+        "kind": "force",
+        "variableId": "5b18e0b1-218d-4f1a-ab80-22703911db37",
+        "objectId": "f2edbb19-cfa8-454d-a162-06c0321275fe",
+        "interactionId": "7bc33deb-7c33-4320-9826-8ffabf3573bb"
+      }
+    ],
+    "coordinateSystems": [],
+    "components": []
+  },
+  "presentation": {
+    "canvas": {
+      "width": 800,
+      "height": 600
+    },
+    "grid": {
+      "size": 20,
+      "visible": true
+    },
+    "elements": [
+      {
+        "id": "8dbbc26e-958b-4d35-ab03-0e733da50ab5",
+        "kind": "spring",
+        "x": 140,
+        "y": 150,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1,
+        "width": 40,
+        "height": 40,
+        "radius": 20,
+        "points": [
+          -80,
+          0,
+          80,
+          0
+        ],
+        "stroke": "#333",
+        "fill": "transparent",
+        "strokeWidth": 2,
+        "text": "Label",
+        "latex": "",
+        "fontSize": 20,
+        "fontFamily": "Arial",
+        "semanticId": "d1742f41-1b14-4b7d-a6b0-1e761444c0fc",
+        "visible": true,
+        "label": {
+          "showName": true,
+          "showProperties": true,
+          "offsetX": 24,
+          "offsetY": 24
+        }
+      },
+      {
+        "id": "ff19e8d0-27c0-4259-a873-d66df46edaa0",
+        "kind": "circle",
+        "x": 360,
+        "y": 150,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1,
+        "width": 40,
+        "height": 40,
+        "radius": 20,
+        "points": [
+          0,
+          0,
+          80,
+          0
+        ],
+        "stroke": "#333",
+        "fill": "transparent",
+        "strokeWidth": 2,
+        "text": "Label",
+        "latex": "",
+        "fontSize": 20,
+        "fontFamily": "Arial",
+        "semanticId": "f2edbb19-cfa8-454d-a162-06c0321275fe",
+        "visible": true,
+        "label": {
+          "showName": true,
+          "showProperties": true,
+          "offsetX": 24,
+          "offsetY": 24
+        }
+      },
+      {
+        "id": "1df4d582-c58a-473d-80e0-c20a4b06cf17",
+        "kind": "cable",
+        "x": 580,
+        "y": 150,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1,
+        "width": 40,
+        "height": 40,
+        "radius": 20,
+        "points": [
+          -80,
+          0,
+          80,
+          0
+        ],
+        "stroke": "#333",
+        "fill": "transparent",
+        "strokeWidth": 2,
+        "text": "Label",
+        "latex": "",
+        "fontSize": 20,
+        "fontFamily": "Arial",
+        "semanticId": "bf537881-f74f-4069-b5cb-d62560ca87c7",
+        "visible": true,
+        "label": {
+          "showName": true,
+          "showProperties": true,
+          "offsetX": 24,
+          "offsetY": 24
+        }
+      },
+      {
+        "id": "0c0c1470-3e89-45e0-b849-ed50c705f930",
+        "kind": "arrow",
+        "x": 400,
+        "y": 300,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1,
+        "width": 40,
+        "height": 40,
+        "radius": 20,
+        "points": [
+          0,
+          0,
+          4.898587196589413e-15,
+          -80
+        ],
+        "stroke": "#c54840",
+        "fill": "transparent",
+        "strokeWidth": 3,
+        "text": "Label",
+        "latex": "",
+        "fontSize": 20,
+        "fontFamily": "Arial",
+        "vectorId": "13130fc1-95a9-4778-99f1-80ed2a811b0d",
+        "label": {
+          "showName": false,
+          "showProperties": true,
+          "offsetX": 12,
+          "offsetY": 12
+        },
+        "visible": true
+      },
+      {
+        "id": "829023f5-ddac-465e-8574-e78d3b5d37d2",
+        "kind": "arrow",
+        "x": 400,
+        "y": 300,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1,
+        "width": 40,
+        "height": 40,
+        "radius": 20,
+        "points": [
+          0,
+          0,
+          4.898587196589413e-15,
+          -80
+        ],
+        "stroke": "#c54840",
+        "fill": "transparent",
+        "strokeWidth": 3,
+        "text": "Label",
+        "latex": "",
+        "fontSize": 20,
+        "fontFamily": "Arial",
+        "vectorId": "6c2741e1-8b36-4deb-8cbd-c7c80929c9b6",
+        "label": {
+          "showName": false,
+          "showProperties": true,
+          "offsetX": 12,
+          "offsetY": 12
+        },
+        "visible": true
+      }
+    ]
+  }
+}

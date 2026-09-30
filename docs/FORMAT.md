@@ -1,47 +1,71 @@
-# Diagramed JSON format version 2
+# Diagramed native JSON version 3
 
-`format` is `diagramed`; `version` is `2`; `id` is the persistent document UUID. Metadata contains title, createdAt and updatedAt. Semantics and presentation remain explicitly separate. Version 2 makes property state, ownership, visibility and labels formal document data.
+`format` is `diagramed`, `version` is 3, and `id` is a persistent document ID. Metadata stores title and creation/update times. `semantics` and `presentation` remain separate. JSON is readable UTF-8 with two-space indentation and `.diagramed.json` extension. Konva nodes, hit zones, selection handles, rendered images and UI drafts are never serialized.
 
-## Semantic objects and property registry
+## Objects and variables
 
-`semantics.objects` contains records `{ id, name, properties }`. `properties` is a sparse mapping of selected `mass`, `charge`, `density` keys to variable IDs. An unselected property has no key; it never means zero. Objects have no geometric shape, position or visibility in their physical definition.
+Objects contain id, name, category, abbreviation, sparse properties and optional plate polarity. Categories: ordinary, spatialPoint, planetSurface, spring, cable, chargedPlate, fluid. Names do not establish categories or behavior. Properties map quantity names to variable IDs; omitted means undefined, never zero.
 
-`semantics.variables` contains property records `{ id, symbol, quantity, ownerObjectId, unit, state, value? }`. `quantity` is mass, charge or density. State is explicit known/unknown. Unknown forbids a value; known requires a finite numerical value, with signed charge and nonnegative mass/density. Units currently offered are kg/g, C/mC/µC/nC, kg/m^3/g/cm^3. No automatic unit conversion or physics calculations occur. The value is interpreted in its stored unit. Editing a symbol/state/value retains the variable ID; removing a property removes its owned variable. Whitespace and grouping braces are ignored for collision checks (`m_2` and `m_{2}` conflict). This is a practical ambiguity check, not a symbolic mathematics equivalence engine.
+Object quantities and units:
 
-Interaction, vector, coordinate-system and component arrays remain present but are not created by this phase. Referential validation and deletion guards anticipate their later use. Standalone legacy variables without property metadata can be retained; newly defined property variables require a valid owner and matching property reference.
+| Quantity | Units | Known values |
+|---|---|---|
+| mass | kg, g | nonnegative |
+| charge | C, mC, µC, nC | signed |
+| density | kg/m^3, g/cm^3 | nonnegative |
+| gravity | m/s^2, N/kg | nonnegative |
+| springConstant | N/m | nonnegative |
+| extension | m, cm | signed |
+| surfaceChargeDensity | C/m^2, µC/m^2 | signed, matching plate polarity |
 
-## Presentation
+Spatial points allow only charge. Planet Surface allows gravity; Spring allows springConstant/extension; Cable has no intrinsic properties; Charged Plate allows surfaceChargeDensity; Fluid allows density. Ordinary objects retain mass/charge/density regardless of selected circle/rectangle/point representation.
 
-`presentation.canvas` stores document width/height, independent of viewport. Grid stores size/visible. Ordered `elements` is drawing order. All Phase 1 geometry/styling fields are retained: id, kind, x/y, rotation, scaleX/Y, width/height, radius, local points, stroke/fill/strokeWidth, text/latex/fontSize/fontFamily.
+Variables contain id, symbol, quantity, unit, state and exactly one property/vector/interaction owner: ownerObjectId, ownerVectorId or ownerInteractionId. Known has a finite value. Unknown has no value. Eligible vector magnitudes may have state=expression and an expression AST instead of value. Symbols are distinct after removing whitespace/grouping braces. IDs remain stable through renaming or changing states. Legacy standalone variables without ownership metadata remain supported.
 
-Each physical object has exactly one saved graphical configuration, even when hidden. Its `semanticId` points to the object; the graphic `id` is independent and stable. Its kind is circle, rectangle or point. `visible` is boolean. "No visible representation" means a hidden configuration, not deleting physical or graphical data. Hidden state and appearance can be restored by Show. Initial hidden objects use a hidden circle configuration until a different appearance is selected.
+## Interactions and vectors
 
-`label` stores `{ showName, showProperties, offsetX, offsetY }`. Labels derive their text/symbols from the semantic definitions, so there are no orphaned arbitrary text elements for semantic objects. Offset is relative to the central attachment location; label orientation is screen-upright. Labels can be dragged and their visibility edited. Rendering images, Konva nodes, hit zones and selection controls are transient and never saved.
+Interactions contain id, kind, objectIds, sourceId (BY), targetId (ON), model, optional separationId, sparse interaction properties, optional friction mode and resultantVisible. Source and target are distinct. Kinds are gravitational, electric, contact, buoyant. Model distinguishes nearSurface/universal gravity and ordinary/spring/cable contact. Interaction properties reference owned volume/staticFriction/kineticFriction variables.
 
-Rectangle x/y is its upper-left, circle/point x/y its center. `attachmentPoint()` maps a rectangle's local midpoint through scale and rotation into document coordinates; circle/point use their stored center. Visual rotation never implies rotational mechanics. Rectangle transforms can be nonuniform; its semantic meaning remains point-like. Circle transforms keep a uniform aspect in the normal editor controls. Semantic stroke widths remain visually consistent during resizing.
+Volume supports m^3, cm^3, L and nonnegative known values. Coefficients use dimensionless unit `1` and nonnegative known values. No graphical geometry determines them.
 
-## Version 1 compatibility
+Vectors contain id, kind and scalar variableId. Separation has ordered fromId/toId. Force references interactionId and objectId, with optional normal/friction/resultant role. Field references sourceId, observation objectId, fieldType and optional separationId. Motion has objectId and motionType velocity/acceleration/displacement.
 
-The loader accepts versions 1 and 2. It validates before changing the open document and saves loaded data as version 2. Genuine Phase 1 generic graphics are retained in original order, with identical IDs, geometry, text, LaTeX and transforms. They are never assigned invented physical meanings. Reopened legacy labels/equations remain editable. No generic creation tools are visible.
+Force magnitudes use N/kN, gravitational fields m/s^2 or N/kg, electric fields N/C or V/m, lengths/displacements m/cm/km, velocities m/s or km/h, accelerations m/s^2. Known magnitudes are nonnegative; known separation is strictly positive. Scalar magnitude and displayed direction/length are independent.
 
-If a version 1 file already contains explicit semantic property relationships, migration populates missing state/quantity/owner/unit from those explicit references. It does not infer relationships from drawings. An explicitly defined object lacking a configuration receives a new hidden configuration; its old generic graphics remain untouched. Existing v1 semantic graphics receive missing visibility/label defaults. Malformed references are rejected rather than repaired silently.
+Inverse-square forces require separation between the participants in either order. Point-source fields require an ordered source-to-observation separation. Near-surface gravity and uniform plate fields require no separation. A hidden source can remain physically relevant. Field observation must be a spatialPoint. Eligibility is validated structurally, not by numerical availability or physical correctness.
 
-## Validation and persistence guarantees
+## Presentation and attachments
 
-Validation checks required fields, unique identities, finite supported geometry, known graphical types, complete label settings, one object configuration, valid object/property/variable ownership, supported units, known/unknown state, symbol ambiguity and relationship references. Unknown versions, invalid JSON, missing/orphaned references and contradictory property values produce understandable errors. The current diagram remains intact. Math is prepared before the candidate replaces the document.
+`presentation` contains canvas width/height, grid size/visible and ordered elements. Each object/vector owns one independent graphical configuration. Object graphics reference semanticId; vector graphics reference vectorId. Visible is explicit. Hidden configurations preserve IDs, transforms, geometry, styling and labels.
 
-Limits: 10 MB JSON, 5,000 entries per array, 100,000 characters per general text field, 80 per property symbol, 120 per object name, 10,000 units per canvas axis and 10,000 grid lines. Geometry magnitude is capped at 1,000,000; property values may be any finite number (Earth-sized masses are allowed). Extra fields are preserved for metadata/extensions; incompatible future semantics require another format version.
+All original geometry/styling fields remain: id, kind, x/y, rotation, scaleX/Y, width/height, radius, points, stroke/fill/strokeWidth, text/latex/fontSize/fontFamily. New kinds are surface, spring and cable. Point and ordinary shapes retain their original fields.
 
-Download is UTF-8 application/json, two-space indentation and `.diagramed.json` extension. Serialization itself does not update metadata. Round-trip equivalence preserves physical definitions, identities, property values/states, graphical geometry, order, visibility, label configuration and editability; JSON whitespace/order is not significant.
+Surface has x=0, width=canvas.width, y at its adjustable upper boundary, height=canvas.height-y, no rotation and unit scale. Ground/plate/fluid styling derives from category; plate charge markers derive from stored polarity. Only its upper edge intercepts pointer gestures. Springs and cables use four local endpoint coordinates; their midpoint is the central attachment location.
 
-The retained `examples/representative.diagramed.json` is a genuine v1 fixture. `examples/semantic-objects.diagramed.json` demonstrates v2 Rock, Table and hidden Earth.
+Rectangle center maps through stored scale/rotation. Circle/point use their center. Separation drawing is derived from both endpoint centers and suppressed when either endpoint graphic is hidden. Its persisted configuration is independent of those derived positions. Attached vector tails derive from target/observation centers; points store relative graphical tip directions/lengths. Object moves do not rewrite physical variables.
 
-## Contract 3 format extension (version 3)
+A contact interaction with friction owns exactly one normal, friction and resultant vector. The normal graphical direction establishes group orientation; friction uses its independently stored length perpendicular to it. Resultant direction/length derive by adding displayed component vectors. No physical magnitude is calculated. Resultant remains an optional visible configuration and cannot be independently dragged.
 
-New documents use version 3. Versions 1/2 migrate explicit object categories to `ordinary`, preserving names, identities, properties and geometry. Historical Earth and graphical point objects are never reinterpreted. Object category is independent of name and shape. Specialized categories are spatialPoint, planetSurface, spring, cable, chargedPlate and fluid. The property registry adds gravity, springConstant, extension and surfaceChargeDensity, with quantity-specific units. Charge, extension and surface charge density permit signed values. Plates store explicit polarity and reject contradictory known signed density.
+Labels store showName/showProperties and offsetX/Y. Name/symbol content derives from the semantic registry; labels remain upright and independently draggable. Object abbreviations and generatedSymbol on vector variables govern symbol regeneration, never physical identity. Explicitly edited symbols remain independent.
 
-Surface graphics use full canvas width, x=0, unrotated unit scale, y at their upper boundary and height=canvas.height-y. Spring/cable graphics store two independently editable local endpoints. Every hidden object retains one configuration. No physical quantities are inferred from graphical geometry.
+## Expressions and constants
 
-Variables may also use ownerVectorId or ownerInteractionId, with exactly one owner. Separation records store kind=separation, fromId/toId and scalar variableId. Their independent graphical configuration references vectorId. Its displayed endpoints derive from the referenced object configurations, never overwrite the physical distance, and cannot be disconnected interactively. Interactions reference sourceId/targetId and an optional separationId. Canonical constant:G and constant:ke live outside serialized document data; documents cannot redefine their identities or symbols.
+AST nodes:
 
-Expression magnitudes have state=expression and an expression AST, without value. AST nodes are number, reference (persistent variable or canonical constant ID), pi, unary (- or abs) and binary (+, -, *, /, ^). Inputs are bounded to 256 nodes and depth 32. The renderer regenerates symbols through the registry; expressions are not evaluated. Reference eligibility is determined by the vector's explicit physical relationship; circular references and unrelated ingredients are rejected. Dependency guards preserve existing expressions when removing quantities or relationships.
+- `{type:"number",value}`: finite numeric literal.
+- `{type:"reference",id}`: persistent variable or canonical constant ID.
+- `{type:"pi"}`: ordinary mathematical π.
+- `{type:"unary",op,operand}`: `-` or `abs`.
+- `{type:"binary",op,left,right}`: `+`, `-`, `*`, `/`, `^`.
+
+Maximum 256 nodes, depth 32. Expressions have no evaluated result. Rendering resolves current symbols; references must belong to the vector's contextual palette. Self/circular references are rejected. Unknown ingredient values are allowed. Deletion/removal protects references before committing changes.
+
+Constants `constant:G` (6.67430e-11 N*m^2/kg^2) and `constant:ke` (8.98755e9 N*m^2/C^2) are canonical immutable application definitions. Documents reference their IDs and cannot redefine their symbols/identities or serialize mutable copies. Only relevant contexts expose them.
+
+## Migration and validation
+
+Versions 1/2 load and save as version 3. Their original generic graphics remain in order with identical identities, geometry, LaTeX and text. Historical arrows never acquire interactions. Existing semantic objects migrate to ordinary category, preserving names and properties. Historical Earth is not renamed to Planet Surface, and historical point graphics are not reclassified as spatial points. Version 1's explicit semantic property references receive missing ownership/state/quantity/unit metadata; no drawing is interpreted as physics. Missing explicit-object configurations receive hidden defaults as in Contract 2.
+
+Validation covers object/category/property eligibility, variable ownership/quantity/units/state, unique identities/symbols, constant reservations, vector prerequisites, interaction participants, separation endpoints, contact groups, expressions, graphical configurations and supported geometry. Imports validate and prepare mathematics before replacing the open document. Failure preserves current data.
+
+Limits retain 10 MB JSON, 5,000 records per array, 100,000 characters per general text field, 80 per symbol, 120 per object name, 10,000 per canvas axis, 10,000 grid lines and geometry magnitude <=1,000,000. Physical values need only be finite and quantity-appropriate; astronomical masses are allowed. Extra metadata/extension fields are preserved. No comprehensive dimensional algebra, physics correctness, equation solving or automatic unit conversion is performed.

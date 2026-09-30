@@ -1,0 +1,376 @@
+{
+  "format": "diagramed",
+  "version": 3,
+  "id": "dcebd049-2bb9-4f68-8d0d-dff29dd17212",
+  "metadata": {
+    "title": "Scenario C",
+    "createdAt": "2026-09-30T17:44:13.363Z",
+    "updatedAt": "2026-09-30T17:44:13.374Z"
+  },
+  "semantics": {
+    "objects": [
+      {
+        "id": "49309717-b4a7-440f-901a-2a3465bc20ba",
+        "name": "Source",
+        "properties": {
+          "charge": "577ea327-831d-457e-b8a8-2fc464cc296e"
+        },
+        "category": "ordinary",
+        "abbreviation": "S"
+      },
+      {
+        "id": "03eb3638-f3f5-444a-911f-ba91e19ff3b6",
+        "name": "P",
+        "properties": {
+          "charge": "9d20083f-178e-4fa3-a7d4-afaba99009ec"
+        },
+        "category": "spatialPoint",
+        "abbreviation": "P"
+      },
+      {
+        "id": "cebb6eef-d1a3-4bca-b76a-288b68bfebf6",
+        "name": "Charged Plate",
+        "properties": {
+          "surfaceChargeDensity": "43fbe36b-0be8-4abb-a848-8e0bc961e625"
+        },
+        "category": "chargedPlate",
+        "polarity": "negative",
+        "abbreviation": "C"
+      },
+      {
+        "id": "a5a74902-f9ad-4311-9a48-b3e03744995b",
+        "name": "P2",
+        "properties": {},
+        "category": "spatialPoint",
+        "abbreviation": "P2"
+      }
+    ],
+    "interactions": [],
+    "variables": [
+      {
+        "id": "577ea327-831d-457e-b8a8-2fc464cc296e",
+        "ownerObjectId": "49309717-b4a7-440f-901a-2a3465bc20ba",
+        "quantity": "charge",
+        "symbol": "Q",
+        "unit": "C",
+        "state": "known",
+        "value": -0.000001
+      },
+      {
+        "id": "9d20083f-178e-4fa3-a7d4-afaba99009ec",
+        "ownerObjectId": "03eb3638-f3f5-444a-911f-ba91e19ff3b6",
+        "quantity": "charge",
+        "symbol": "q_p",
+        "unit": "C",
+        "state": "unknown"
+      },
+      {
+        "id": "b64351da-e654-48da-bf93-6363cbed731c",
+        "ownerVectorId": "a443b7a5-b44c-4aff-bad2-dbbbd90245fc",
+        "quantity": "length",
+        "symbol": "r_{S,P}",
+        "unit": "m",
+        "state": "unknown",
+        "generatedSymbol": true
+      },
+      {
+        "id": "5b9cfcd2-af2e-44af-8322-629fb6e4352e",
+        "ownerVectorId": "6fa1ada5-2c9f-4c6c-9397-e6b0e5425b50",
+        "quantity": "electricField",
+        "symbol": "E_{S,P}",
+        "unit": "N/C",
+        "state": "unknown",
+        "generatedSymbol": true
+      },
+      {
+        "id": "43fbe36b-0be8-4abb-a848-8e0bc961e625",
+        "ownerObjectId": "cebb6eef-d1a3-4bca-b76a-288b68bfebf6",
+        "quantity": "surfaceChargeDensity",
+        "symbol": "\\sigma",
+        "unit": "C/m^2",
+        "state": "known",
+        "value": -0.000001
+      },
+      {
+        "id": "96f443b1-34dc-4975-b25c-d90a62f6f26e",
+        "ownerVectorId": "e912eeb4-b893-4098-97cf-08886a72e0b9",
+        "quantity": "electricField",
+        "symbol": "E_{C,P2}",
+        "unit": "N/C",
+        "state": "unknown",
+        "generatedSymbol": true
+      }
+    ],
+    "vectors": [
+      {
+        "id": "a443b7a5-b44c-4aff-bad2-dbbbd90245fc",
+        "kind": "separation",
+        "fromId": "49309717-b4a7-440f-901a-2a3465bc20ba",
+        "toId": "03eb3638-f3f5-444a-911f-ba91e19ff3b6",
+        "variableId": "b64351da-e654-48da-bf93-6363cbed731c"
+      },
+      {
+        "id": "6fa1ada5-2c9f-4c6c-9397-e6b0e5425b50",
+        "kind": "field",
+        "variableId": "5b9cfcd2-af2e-44af-8322-629fb6e4352e",
+        "objectId": "03eb3638-f3f5-444a-911f-ba91e19ff3b6",
+        "sourceId": "49309717-b4a7-440f-901a-2a3465bc20ba",
+        "fieldType": "electric",
+        "separationId": "a443b7a5-b44c-4aff-bad2-dbbbd90245fc"
+      },
+      {
+        "id": "e912eeb4-b893-4098-97cf-08886a72e0b9",
+        "kind": "field",
+        "variableId": "96f443b1-34dc-4975-b25c-d90a62f6f26e",
+        "objectId": "a5a74902-f9ad-4311-9a48-b3e03744995b",
+        "sourceId": "cebb6eef-d1a3-4bca-b76a-288b68bfebf6",
+        "fieldType": "electric"
+      }
+    ],
+    "coordinateSystems": [],
+    "components": []
+  },
+  "presentation": {
+    "canvas": {
+      "width": 800,
+      "height": 600
+    },
+    "grid": {
+      "size": 20,
+      "visible": true
+    },
+    "elements": [
+      {
+        "id": "ad118087-065f-4728-ac93-6f99296e074e",
+        "kind": "circle",
+        "x": 140,
+        "y": 150,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1,
+        "width": 40,
+        "height": 40,
+        "radius": 20,
+        "points": [
+          0,
+          0,
+          80,
+          0
+        ],
+        "stroke": "#333",
+        "fill": "transparent",
+        "strokeWidth": 2,
+        "text": "Label",
+        "latex": "",
+        "fontSize": 20,
+        "fontFamily": "Arial",
+        "semanticId": "49309717-b4a7-440f-901a-2a3465bc20ba",
+        "visible": true,
+        "label": {
+          "showName": true,
+          "showProperties": true,
+          "offsetX": 24,
+          "offsetY": 24
+        }
+      },
+      {
+        "id": "866ef312-6f03-403e-8d03-6b9a93017aea",
+        "kind": "point",
+        "x": 360,
+        "y": 150,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1,
+        "width": 40,
+        "height": 40,
+        "radius": 4,
+        "points": [
+          0,
+          0,
+          80,
+          0
+        ],
+        "stroke": "#333",
+        "fill": "#333",
+        "strokeWidth": 2,
+        "text": "Label",
+        "latex": "",
+        "fontSize": 20,
+        "fontFamily": "Arial",
+        "semanticId": "03eb3638-f3f5-444a-911f-ba91e19ff3b6",
+        "visible": true,
+        "label": {
+          "showName": true,
+          "showProperties": true,
+          "offsetX": 24,
+          "offsetY": 24
+        }
+      },
+      {
+        "id": "fcbd4dc3-30ad-4408-b15e-3b07019b6bfc",
+        "kind": "dashedArrow",
+        "x": 400,
+        "y": 300,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1,
+        "width": 40,
+        "height": 40,
+        "radius": 20,
+        "points": [
+          0,
+          0,
+          0,
+          -80
+        ],
+        "stroke": "#77828a",
+        "fill": "transparent",
+        "strokeWidth": 3,
+        "text": "Label",
+        "latex": "",
+        "fontSize": 20,
+        "fontFamily": "Arial",
+        "vectorId": "a443b7a5-b44c-4aff-bad2-dbbbd90245fc",
+        "label": {
+          "showName": false,
+          "showProperties": true,
+          "offsetX": 12,
+          "offsetY": 12
+        },
+        "visible": true
+      },
+      {
+        "id": "84ed9a3e-8788-45dd-a59b-134057305e1b",
+        "kind": "arrow",
+        "x": 400,
+        "y": 300,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1,
+        "width": 40,
+        "height": 40,
+        "radius": 20,
+        "points": [
+          0,
+          0,
+          4.898587196589413e-15,
+          -80
+        ],
+        "stroke": "#9954a7",
+        "fill": "transparent",
+        "strokeWidth": 3,
+        "text": "Label",
+        "latex": "",
+        "fontSize": 20,
+        "fontFamily": "Arial",
+        "vectorId": "6fa1ada5-2c9f-4c6c-9397-e6b0e5425b50",
+        "label": {
+          "showName": false,
+          "showProperties": true,
+          "offsetX": 12,
+          "offsetY": 12
+        },
+        "visible": true
+      },
+      {
+        "id": "800ade29-4a9c-4e93-86b0-9432d1332f0a",
+        "kind": "surface",
+        "x": 0,
+        "y": 432,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1,
+        "width": 800,
+        "height": 168,
+        "radius": 20,
+        "points": [
+          0,
+          0,
+          80,
+          0
+        ],
+        "stroke": "#333",
+        "fill": "#ddd",
+        "strokeWidth": 2,
+        "text": "Label",
+        "latex": "",
+        "fontSize": 20,
+        "fontFamily": "Arial",
+        "semanticId": "cebb6eef-d1a3-4bca-b76a-288b68bfebf6",
+        "visible": true,
+        "label": {
+          "showName": true,
+          "showProperties": true,
+          "offsetX": 24,
+          "offsetY": 24
+        }
+      },
+      {
+        "id": "05a6bd24-64eb-493f-ab61-0819bec64364",
+        "kind": "point",
+        "x": 140,
+        "y": 330,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1,
+        "width": 40,
+        "height": 40,
+        "radius": 4,
+        "points": [
+          0,
+          0,
+          80,
+          0
+        ],
+        "stroke": "#333",
+        "fill": "#333",
+        "strokeWidth": 2,
+        "text": "Label",
+        "latex": "",
+        "fontSize": 20,
+        "fontFamily": "Arial",
+        "semanticId": "a5a74902-f9ad-4311-9a48-b3e03744995b",
+        "visible": true,
+        "label": {
+          "showName": true,
+          "showProperties": true,
+          "offsetX": 24,
+          "offsetY": 24
+        }
+      },
+      {
+        "id": "798bac0d-8c72-4b1c-a9e5-078dd71e5e89",
+        "kind": "arrow",
+        "x": 400,
+        "y": 300,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1,
+        "width": 40,
+        "height": 40,
+        "radius": 20,
+        "points": [
+          0,
+          0,
+          4.898587196589413e-15,
+          -80
+        ],
+        "stroke": "#9954a7",
+        "fill": "transparent",
+        "strokeWidth": 3,
+        "text": "Label",
+        "latex": "",
+        "fontSize": 20,
+        "fontFamily": "Arial",
+        "vectorId": "e912eeb4-b893-4098-97cf-08886a72e0b9",
+        "label": {
+          "showName": false,
+          "showProperties": true,
+          "offsetX": 12,
+          "offsetY": 12
+        },
+        "visible": true
+      }
+    ]
+  }
+}

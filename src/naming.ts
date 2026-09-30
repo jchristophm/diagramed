@@ -14,5 +14,5 @@ export function vectorSymbol(doc:DiagramDocument,v:PhysicalVector){
 }
 export function synchronizeSymbols(doc:DiagramDocument){
  abbreviate(doc);const taken=new Set(doc.semantics.variables.filter(v=>!v.generatedSymbol).map(v=>v.symbol.replace(/\s|[{}]/g,'')));
- for(const vector of doc.semantics.vectors){const variable=doc.semantics.variables.find(v=>v.id===vector.variableId);if(!variable?.generatedSymbol)continue;const base=vectorSymbol(doc,vector);let symbol=base,n=2;while(taken.has(symbol.replace(/\s|[{}]/g,'')))symbol=`${base}_{${n++}}`;variable.symbol=symbol;taken.add(symbol.replace(/\s|[{}]/g,''));}
+ for(const vector of doc.semantics.vectors){const variable=doc.semantics.variables.find(v=>v.id===vector.variableId);if(!variable?.generatedSymbol)continue;const base=vectorSymbol(doc,vector);let symbol=base,n=2;while(taken.has(symbol.replace(/\s|[{}]/g,'')))symbol=`${base.slice(0,-1)},${n++}}`;variable.symbol=symbol;taken.add(symbol.replace(/\s|[{}]/g,''));}
 }

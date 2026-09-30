@@ -1,0 +1,290 @@
+{
+  "format": "diagramed",
+  "version": 3,
+  "id": "df42b4ec-474b-4d72-bfef-d19c61894573",
+  "metadata": {
+    "title": "Scenario D",
+    "createdAt": "2026-09-30T17:44:13.367Z",
+    "updatedAt": "2026-09-30T17:44:13.374Z"
+  },
+  "semantics": {
+    "objects": [
+      {
+        "id": "2669642c-22dd-44af-8615-1e3f3f38aa42",
+        "name": "Book",
+        "properties": {},
+        "category": "ordinary",
+        "abbreviation": "B"
+      },
+      {
+        "id": "94f77686-4ff2-484c-9630-17a35132a652",
+        "name": "Table",
+        "properties": {},
+        "category": "ordinary",
+        "abbreviation": "T"
+      }
+    ],
+    "interactions": [
+      {
+        "id": "a9a17068-8f73-4f29-883e-58c7a9573341",
+        "kind": "contact",
+        "model": "ordinary",
+        "sourceId": "94f77686-4ff2-484c-9630-17a35132a652",
+        "targetId": "2669642c-22dd-44af-8615-1e3f3f38aa42",
+        "objectIds": [
+          "94f77686-4ff2-484c-9630-17a35132a652",
+          "2669642c-22dd-44af-8615-1e3f3f38aa42"
+        ],
+        "properties": {
+          "kineticFriction": "7e110831-c6b0-4437-abb4-ce3f7fb6c78f"
+        },
+        "friction": "kinetic",
+        "resultantVisible": true
+      }
+    ],
+    "variables": [
+      {
+        "id": "7e110831-c6b0-4437-abb4-ce3f7fb6c78f",
+        "ownerInteractionId": "a9a17068-8f73-4f29-883e-58c7a9573341",
+        "quantity": "kineticFriction",
+        "symbol": "\\mu_k",
+        "unit": "1",
+        "state": "known",
+        "generatedSymbol": false,
+        "value": 0.3
+      },
+      {
+        "id": "4c08eb1a-832c-4466-9741-1e9536854e31",
+        "ownerVectorId": "4dd81d04-9d94-49c6-b43c-282fb772eae2",
+        "quantity": "force",
+        "symbol": "N_{T,B}",
+        "unit": "N",
+        "state": "unknown",
+        "generatedSymbol": true
+      },
+      {
+        "id": "f5e93a26-8965-45ef-9621-d19ccda69110",
+        "ownerVectorId": "c5c5d852-5a46-4686-b700-08159a399e0b",
+        "quantity": "force",
+        "symbol": "f_{T,B}",
+        "unit": "N",
+        "state": "unknown",
+        "generatedSymbol": true
+      },
+      {
+        "id": "0268d9d1-2bde-49fb-afb1-ab3c7a606c5b",
+        "ownerVectorId": "5e9e2dd5-5870-48f2-a69b-552de2892dff",
+        "quantity": "force",
+        "symbol": "F_{T,B}",
+        "unit": "N",
+        "state": "unknown",
+        "generatedSymbol": true
+      }
+    ],
+    "vectors": [
+      {
+        "id": "4dd81d04-9d94-49c6-b43c-282fb772eae2",
+        "kind": "force",
+        "variableId": "4c08eb1a-832c-4466-9741-1e9536854e31",
+        "objectId": "2669642c-22dd-44af-8615-1e3f3f38aa42",
+        "interactionId": "a9a17068-8f73-4f29-883e-58c7a9573341",
+        "role": "normal"
+      },
+      {
+        "id": "c5c5d852-5a46-4686-b700-08159a399e0b",
+        "kind": "force",
+        "objectId": "2669642c-22dd-44af-8615-1e3f3f38aa42",
+        "interactionId": "a9a17068-8f73-4f29-883e-58c7a9573341",
+        "role": "friction",
+        "variableId": "f5e93a26-8965-45ef-9621-d19ccda69110"
+      },
+      {
+        "id": "5e9e2dd5-5870-48f2-a69b-552de2892dff",
+        "kind": "force",
+        "objectId": "2669642c-22dd-44af-8615-1e3f3f38aa42",
+        "interactionId": "a9a17068-8f73-4f29-883e-58c7a9573341",
+        "role": "resultant",
+        "variableId": "0268d9d1-2bde-49fb-afb1-ab3c7a606c5b"
+      }
+    ],
+    "coordinateSystems": [],
+    "components": []
+  },
+  "presentation": {
+    "canvas": {
+      "width": 800,
+      "height": 600
+    },
+    "grid": {
+      "size": 20,
+      "visible": true
+    },
+    "elements": [
+      {
+        "id": "5fbcf638-aed6-40b6-8af4-c7d16d8943a8",
+        "kind": "circle",
+        "x": 140,
+        "y": 150,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1,
+        "width": 40,
+        "height": 40,
+        "radius": 20,
+        "points": [
+          0,
+          0,
+          80,
+          0
+        ],
+        "stroke": "#333",
+        "fill": "transparent",
+        "strokeWidth": 2,
+        "text": "Label",
+        "latex": "",
+        "fontSize": 20,
+        "fontFamily": "Arial",
+        "semanticId": "2669642c-22dd-44af-8615-1e3f3f38aa42",
+        "visible": true,
+        "label": {
+          "showName": true,
+          "showProperties": true,
+          "offsetX": 24,
+          "offsetY": 24
+        }
+      },
+      {
+        "id": "2cc88f97-7421-4ed9-b7f7-c9ef6cb729b6",
+        "kind": "rectangle",
+        "x": 360,
+        "y": 150,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1,
+        "width": 40,
+        "height": 40,
+        "radius": 20,
+        "points": [
+          0,
+          0,
+          80,
+          0
+        ],
+        "stroke": "#333",
+        "fill": "transparent",
+        "strokeWidth": 2,
+        "text": "Label",
+        "latex": "",
+        "fontSize": 20,
+        "fontFamily": "Arial",
+        "semanticId": "94f77686-4ff2-484c-9630-17a35132a652",
+        "visible": true,
+        "label": {
+          "showName": true,
+          "showProperties": true,
+          "offsetX": 24,
+          "offsetY": 24
+        }
+      },
+      {
+        "id": "12f6e479-4556-44a3-a972-5cb62fe7f962",
+        "kind": "arrow",
+        "x": 400,
+        "y": 300,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1,
+        "width": 40,
+        "height": 40,
+        "radius": 20,
+        "points": [
+          0,
+          0,
+          50.000000000000014,
+          -86.60254037844386
+        ],
+        "stroke": "#c54840",
+        "fill": "transparent",
+        "strokeWidth": 3,
+        "text": "Label",
+        "latex": "",
+        "fontSize": 20,
+        "fontFamily": "Arial",
+        "vectorId": "4dd81d04-9d94-49c6-b43c-282fb772eae2",
+        "label": {
+          "showName": false,
+          "showProperties": true,
+          "offsetX": 12,
+          "offsetY": 12
+        },
+        "visible": true
+      },
+      {
+        "id": "ed174970-ab34-4eb9-aa6e-0eee76e8363d",
+        "kind": "arrow",
+        "x": 400,
+        "y": 300,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1,
+        "width": 40,
+        "height": 40,
+        "radius": 20,
+        "points": [
+          0,
+          0,
+          60,
+          0
+        ],
+        "stroke": "#c54840",
+        "fill": "transparent",
+        "strokeWidth": 3,
+        "text": "Label",
+        "latex": "",
+        "fontSize": 20,
+        "fontFamily": "Arial",
+        "vectorId": "c5c5d852-5a46-4686-b700-08159a399e0b",
+        "label": {
+          "showName": false,
+          "showProperties": true,
+          "offsetX": 12,
+          "offsetY": 12
+        },
+        "visible": true
+      },
+      {
+        "id": "c1e3b9aa-f9a4-4cc8-a3e2-69d090e8790d",
+        "kind": "arrow",
+        "x": 400,
+        "y": 300,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1,
+        "width": 40,
+        "height": 40,
+        "radius": 20,
+        "points": [
+          0,
+          0,
+          50.000000000000014,
+          -86.60254037844386
+        ],
+        "stroke": "#c54840",
+        "fill": "transparent",
+        "strokeWidth": 3,
+        "text": "Label",
+        "latex": "",
+        "fontSize": 20,
+        "fontFamily": "Arial",
+        "vectorId": "5e9e2dd5-5870-48f2-a69b-552de2892dff",
+        "label": {
+          "showName": false,
+          "showProperties": true,
+          "offsetX": 12,
+          "offsetY": 12
+        },
+        "visible": true
+      }
+    ]
+  }
+}

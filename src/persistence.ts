@@ -79,11 +79,11 @@ export function parseDocument(text: string): DiagramDocument {
     }
   }
   result.version = 3;
-  for(const physical of result.semantics.objects){physical.category ??= 'ordinary';}
+  if(d.version!==3)for(const physical of result.semantics.objects){physical.category ??= 'ordinary';}
   validateRelationships(result);
   return result;
 }
-function validateRelationships(doc: DiagramDocument) {
+export function validateRelationships(doc: DiagramDocument) {
   const objects = new Map(doc.semantics.objects.map(o => [o.id, o]));
   const variables = new Map(doc.semantics.variables.map(v => [v.id, v]));
   const symbols = new Set<string>();

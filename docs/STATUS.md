@@ -1,39 +1,23 @@
-# Development Contract 2 status
+# Contract 3 development status
 
-Working branch: `development`. `main` preserves the original import. Problemly is unchanged.
+Repository: jchristophm/diagramed. Branch: development. Main preserves the original import; Problemly and original/ remain untouched. Live URL: https://jchristophm.github.io/diagramed/ . Contracts 1 and 2 remain historical documentation.
 
-## Saved milestones
+## Recoverable milestones
 
-1. Interface and semantic creation: `92a30508e265892cd229b32942ca6808f79970f1`.
-2. Properties and variable registry: `31d16a3e203c2d9fe378295d897767a466fb0581`.
-3. Collection, visibility and synchronized labels: `12af6c8c197f3ce49769489ace52031a43cae3e0`.
-4. JSON, migration and acceptance checkpoint: `d9adfe72aaaeb4ea8702627287917d1fabe644f6`. The subsequent handoff commit records live verification.
+1. Physical object system: 7e10c90a11811f1f67dcdc160fb75df3d9f18196. Actions run 36749778933 verified/deployed; 24 unit and 12 desktop/mobile browser tests passed.
+2. Interactions, constants and separations: 40998b5ec279b25eb505327f0913c542148b9dd7. Run 36750432191 verified/deployed; 27 unit and 14 browser tests passed.
+3. Force, field and motion vectors: 5913fdcc1a9d226ed2b918b28a8bec92d91c7769. Run 36752175525 verified/deployed; 31 unit and 16 browser tests passed.
+4. Structured contextual expressions: 809308fcaa06c54439fa1256c3dad5ffac575f95. Run 36752974246 verified/deployed; 35 unit and 18 browser tests passed.
+5. Final integration candidate includes all required scenarios, examples, documentation and independent post-deployment browser acceptance. Local 43 unit tests and TypeScript/production build pass. Final expanded browser/deployment/live verification is pending this push. Do not claim full Contract 3 completion until this run succeeds.
 
-## Validation
+Early candidate checks caught a positional assumption in the mass regression test and a TypeScript narrowing issue. Both were corrected before the successful checkpoints above.
 
-On 2026-09-30 UTC, all 16 unit tests and all 10 production-build browser tests passed. TypeScript compilation and production build passed. Browser tests cover desktop and emulated Pixel 7 touch, the full Rock/Table/Earth acceptance scenario, persistent IDs through editing and reopening, rectangle resize, hidden appearance restoration, property changes, enlarged point interaction, collision guidance, deletion and genuine Phase 1 graphics without invented semantics. Invalid imports preserve the open document.
+## Recovery
 
-GitHub Actions run 36664331170 completed verification and deployment successfully for application commit d9adfe72aaaeb4ea8702627287917d1fabe644f6. All 10 desktop/mobile browser acceptance tests also passed independently against the deployed URL on 2026-09-30 UTC. Development Contract 2 is complete; no implementation work remains. Live development URL: https://jchristophm.github.io/diagramed/ . GitHub Actions tests and deploys `development` automatically.
+Resume from current development HEAD. Completed object, relationship, vector and expression commands are implemented and persisted in version 3. Examples scenario-A through scenario-F and tests cover the required models. Remaining work is to inspect final GitHub Actions results, correct any failures, verify the deployed application independently and record completion here. Never merge to main or touch Problemly.
 
-## Architecture and limitations
+## Verification environment and limitations
 
-The authoritative document store owns semantic objects and independent graphical records. Object properties reference persistent variables with quantity, owner, units and explicit known/unknown state. Geometry attachment points and dependency-aware deletion provide Phase 3 entry points. See README.md and docs/FORMAT.md for architecture and migration details.
+Local Chromium launch is blocked by this workspace's socket restriction; GitHub Actions supplies desktop and emulated mobile browser verification. The workflow now runs a fresh browser suite against the deployed URL on a separate runner. Actual physical-device touchscreen acceptance remains the user's responsibility.
 
-Actual mobile touchscreen acceptance is reserved for the user. There is no autosave, undo, unit conversion, physics solving, force creation, Mathed integration, server storage or image export. Existing legacy graphics remain editable, but generic creation is removed. The cloud proxy may require a temporary local browser ignoreHTTPSErrors setting for live tests; the committed browser configuration does not disable certificate checks.
-
-
-## Contract 3 in progress
-
-Object categories, specialized presets/renderers and version 3 object persistence are implemented. 24 unit tests and TypeScript/production build pass. Local Chromium cannot launch because this execution environment denies its socket operation; desktop/mobile browser verification is delegated to the existing GitHub Actions workflow. Checkpoint 1 is pending that browser result. Checkpoints 2–5 remain unfinished. Resume from development; do not touch main or Problemly.
-
-Checkpoint 1 confirmed: GitHub Actions run 36749778933 passed all 24 unit tests, build and 12 desktop/mobile browser tests and deployed successfully (commit 7e10c90a11811f1f67dcdc160fb75df3d9f18196). The first candidate failed only because a regression test assumed variable array order; it now checks persistent IDs.
-
-Checkpoint 2 candidate: canonical constants, interaction-owned quantities, separation commands and UI, constrained endpoint attachment, visibility, abbreviations and ownership validation are implemented. 27 unit tests and build pass. Browser tests will run in GitHub Actions. Full force/field/motion UI and expressions remain unfinished.
-
-Checkpoint 2 verified and deployed: 40998b5ec279b25eb505327f0913c542148b9dd7, GitHub Actions run 36750432191. Unit/build and 14 desktop/mobile browser tests passed.
-
-Checkpoint 3 candidate adds all semantic force categories, fields and motion vectors, reusable deterministic eligibility, linked normal/friction/resultant graphics, magnitude editing and collections. 31 unit tests and production build pass; browser verification is pending this push. Expressions and final acceptance/deployment handoff remain unfinished.
-
-Checkpoint 3 confirmed: 5913fdcc1a9d226ed2b918b28a8bec92d91c7769, Actions run 36752175525 passed unit/build and 16 desktop/mobile browser tests and deployed. An initial candidate had a TypeScript narrowing failure and was immediately corrected before this successful verification.
-
-Checkpoint 4 candidate implements bounded structured expressions, context palettes, canonical constant references, automatic symbol rendering and dependency protection. 35 unit tests and build pass. Browser expression acceptance will run in Actions. Final acceptance scenarios, schema documentation, examples and independent deployed verification remain.
+No physical correctness assessment, expression evaluation, comprehensive unit/dimensional algebra, coordinate systems/components, AI, Mathed, autosave, undo, server storage or image export is implemented. Initial interaction-owned quantities must be confirmed before they appear as registered ingredients in a subsequent expression edit. These boundaries are documented in README.md and docs/FORMAT.md.

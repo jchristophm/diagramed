@@ -1,35 +1,56 @@
 # Diagramed
 
-Object-first semantic physics editor, independent of Problemly. Live development app: https://jchristophm.github.io/diagramed/ . Source: `development`. `main` preserves the original import checkpoint; `original/` preserves the untouched source. No writes or deployment changes target Problemly.
+A semantic physics diagram editor. Live development application: https://jchristophm.github.io/diagramed/ . Source and all checkpoints are on `development`; `main` preserves the original import. Problemly is unchanged, and `original/` remains untouched.
 
-## Use
+## Using the editor
 
-**Object** defines a physical object before creating its representation. Choose circle, rectangle, point, or no visible representation. All describe point-like physical objects; a rectangle may visually represent a table without implying extended-body mechanics. Earth is available under Start with; it starts hidden and adds no constants or forces.
+**Object** opens a confirmed physical definition. Ordinary objects have circle, rectangle, point or hidden representations and optional mass, charge and density. Category is independent of name. Presets include Spatial point (optional charge), Planet Surface (hidden, g=9.8 m/s²), Spring (optional k and extension), String/Cable, Charged Plate (polarity and optional surface charge density), and Fluid (Water, density=1000 kg/m³). Defaults still obey symbol collision checks. No placement creates forces or fields automatically.
 
-Select optional mass, electric charge or density, define a LaTeX symbol and choose Unknown or Known. A known property requires a finite value in one of the offered appropriate units. Mass/density cannot be negative; charge may be signed. Undefined properties are absent, never zero. Unknown properties contain no numerical value. Symbol collisions produce guidance; use distinct subscripts. Editing a symbol or value preserves its variable ID. Unchecking a property removes its owned variable.
+Ground, plate and fluid span the logical canvas and anchor to its bottom. Drag their upper boundary to adjust the surface. Fluid is translucent and behind ordinary objects; its interior does not intercept object gestures. Springs and cables have independently adjustable endpoints. These graphical operations never change physical properties. Ordinary rectangles resize independently horizontally and vertically. Points retain enlarged hit targets.
 
-**Objects** opens a compact collection containing visible and hidden definitions. Select a name to locate its representation, or use Edit, Hide/Show and Delete. Selecting on the canvas and in the collection uses the same semantic record. A visible object's name/property symbols are generated from its definition; optional labels can be switched off in Edit. Drag a label to position it independently. Double-click/double-tap an object or its label to edit its definition. Points have enlarged hit targets. Rectangles resize independently horizontally/vertically. Moving/resizing changes graphics, not semantic IDs.
+**Objects** contains visible and hidden objects. Select, edit, show/hide or delete. Names and property-symbol labels are generated; optional label information can be disabled and label positions dragged. Double-click/double-tap a graphic or label to edit.
 
-**Open**, **Grid**, **Delete**, **Save** provide JSON opening, grid visibility, selected-object deletion and JSON downloading. Hiding preserves the saved appearance, transform, labels and position. JSON v1 files still load as legacy graphics and remain editable, but no generic creation tools are offered. Text/math on imported graphics edit with double-click/double-tap. There is no autosave, undo or unsaved-change prompt; download before leaving the page.
+**Vector** defines Separation, Force, Field, Velocity, Acceleration or Displacement before creating its graphic. Unavailable choices are visible and disabled without hints. A separation has ordered FROM/TO references; its dashed arrow follows endpoint objects, and its physical distance is independent of the drawing. Point-source fields require source-to-observation separation; inverse-square forces accept either separation orientation without changing it.
 
-## Architecture and extension points
+Forces specify BY and ON, including near-surface/universal gravity, electric, ordinary contact, spring, cable tension and buoyancy. Fields specify BY and AT a Spatial point. Unknown magnitudes are valid. Buoyancy owns displaced volume; friction can own a static/kinetic coefficient. Contact with friction creates separate linked normal/friction vectors with independent lengths and perpendicular directions. Optional resultant presentation sums their displayed geometry, without calculating physical magnitudes.
 
-- `src/model.ts`: one authoritative document store, independent graphical IDs, presentation records. Konva is never the document database.
-- `src/semantics.ts`: physical objects, variables and reserved interaction/vector/coordinate/component types.
-- `src/objects.ts`: atomic confirmed object edits, property variable registry, visibility, presets and dependency-aware deletion. Property ownership is explicit, not based on a displayed symbol. UI drafts do not mutate the document.
-- `src/property-form.ts`: property form draft and LaTeX previews; validates input before calling model operations.
-- `src/geometry.ts`: `attachmentPoint()` computes a stable central attachment location from stored geometry and transforms, without Konva.
-- `src/renderer.ts`: reusable Konva interactions, independent touch targets, selection and derived synchronized labels. Label pixels, selection handles and Konva instances are transient.
-- `src/main.ts`: object dialogs, collection, document controls, selection routing and legacy editing.
-- `src/persistence.ts`: v1 migration, v2 validation and readable JSON.
-- `src/math.ts`: cached internal KaTeX raster rendering from stored LaTeX source.
+For attached arrows, drag the tip to change graphical direction and length; the tail stays attached. A contact normal tip rotates the pair, while its friction tip adjusts friction length along the perpendicular axis. Direction and length are also editable in the dialog. Separation endpoints and resultants cannot be disconnected. Hidden source objects can still produce force/field arrows attached to visible targets; hidden separation endpoints suppress only the separation drawing.
 
-Phase 3 should add interaction/vector commands beside object commands, reference object IDs and variable IDs, and use `attachmentPoint()` for graphical attachment. Extend the quantity/type definitions and relationship validator for vector-owned variables. Do not infer physics from shape, position or label. The deletion policy currently removes owned property variables and linked graphics; it refuses deletion/removal when preserved interactions, vectors or components depend on them. This is the hook for future relationship-aware deletion. No forces or other vector creation, assessment, coordinates or Mathed features are implemented.
+**Vectors** contains all defined vectors, including hidden ones. Linked contact vectors edit as a group and can be deleted with Delete group. Ordinary vector deletion removes its owned variables and removes the interaction only when no remaining vector uses it. Dependency guards refuse operations that would invalidate expressions, separation, field or interaction references.
 
-## Build, tests and deployment
+## Mathematical definitions
 
-`npm ci`, `npm test`, `npm run build`, `npx playwright install --with-deps chromium`, `npm run test:browser`. Browser tests run against compiled assets via Vite preview. `npm run dev` starts development. `TEST_URL=https://jchristophm.github.io/diagramed/ npm run test:browser` checks the live app.
+Optional physical properties and magnitudes have stable variable IDs, quantities, units, ownership and explicit Known/Unknown states. Undefined properties are absent, never zero. Charge, surface charge density and spring extension can be signed. Known separation distances must be positive. No automatic unit conversion occurs.
 
-GitHub Actions verifies pushes to `development` and pull requests, then deploys development after unit tests, TypeScript compilation/build and desktop/mobile browser tests pass. Pages is enabled with GitHub Actions and the environment allows `development`. All work is checkpointed to GitHub. Real mobile touchscreen acceptance remains separate from automated emulation. PR preview hosting is not configured.
+Eligible vector magnitudes also support **Expression**. A contextual palette offers actual defined variables and relevant immutable G/k_e constants. Use ingredient buttons, arithmetic, parentheses, powers, negation, absolute value, π and finite numerical literals. Expressions begin empty; no governing equations are suggested. Variable references are stored by ID. Changing symbols updates the rendered expression without evaluating or rewriting it. Context restrictions, bounded syntax and cycle checks preserve integrity. For interaction quantities defined during initial creation, confirm the unknown force first and edit it to use the newly registered quantity in an expression.
 
-See `docs/FORMAT.md`, `docs/STATUS.md`, `docs/DEVELOPMENT_CONTRACT_2.md` and `examples/semantic-objects.diagramed.json`.
+Object abbreviations distinguish shared initials (Earth/Emu → Ea/Em). Generated symbols use those assignments while physical relationships use persistent IDs. Mathematical symbols remain editable; unchanged generated symbols continue following object renames.
+
+**Open**, **Grid**, **Delete**, **Save** manage JSON, grid visibility, selection deletion and JSON download. v1/v2 documents migrate to v3 with original graphics, names and identities intact. Legacy Earth objects are ordinary objects; historical points/arrows do not acquire new physics. Imported generic text/math remain editable, but generic creation is unavailable. Invalid files preserve the current document.
+
+There is no autosave, undo or unsaved-change prompt. Download before leaving the page.
+
+## Architecture
+
+- `model.ts`: authoritative document store and independent graphical identities.
+- `semantics.ts`: objects/categories, variables, interactions, vectors, expressions and reserved coordinate/component types.
+- `objects.ts`: atomic object commands, presets, property eligibility and safe deletion.
+- `physics.ts`: interaction/vector commands, quantity units, separation and derived attached presentation.
+- `geometry.ts`: central attachment coordinates independent of Konva.
+- `eligibility.ts`: deterministic structural prerequisites, reusable without the UI.
+- `naming.ts`: abbreviations and generated symbols without parsing labels into relationships.
+- `constants.ts`: immutable canonical G/k_e definitions outside document data.
+- `expressions.ts`: bounded AST grammar, relevant references, rendering, cycles and deletion guards. No evaluation.
+- `renderer.ts`: Konva rendering, enlarged touch targets, specialized graphics and attached vector updates.
+- `property-form.ts`, `vector-ui.ts`, `expression-ui.ts`, `main.ts`: draft dialogs, collections and document operations.
+- `persistence.ts`: v1/v2 migration and whole-document validation before replacement.
+
+Future coordinate systems and components should reference vector/variable IDs and use stored graphical directions with explicitly defined physical magnitudes. Extend the reserved coordinate/component records and eligibility/quantity units, without inferring distance from pixels. Mathed can consume expression ASTs and registry IDs. No coordinate components, algebra, assessment, AI tutor, authentication, server storage or image export are implemented.
+
+## Verification and deployment
+
+Run `npm ci`, `npm test`, `npm run build`, `npx playwright install --with-deps chromium`, `npm run test:browser`. Browser tests use compiled production assets through local Vite preview. `TEST_URL=https://jchristophm.github.io/diagramed/ npm run test:browser` tests the deployed app independently.
+
+GitHub Actions verifies development pushes/PRs, deploys development after verification, then uses a separate runner to repeat desktop/mobile acceptance against the live URL. Local Chromium launches are currently prohibited by the cloud workspace socket restriction; GitHub runners perform browser checks. Real touchscreen testing remains the user's responsibility. PR previews are not configured.
+
+`examples/scenario-A` through `scenario-F` contain representative student-authored models/expressions. They are example documents, not UI equation templates. `representative.diagramed.json` and `version2.diagramed.json` remain genuine legacy fixtures. See docs/FORMAT.md, docs/STATUS.md and the three historical development contracts.
