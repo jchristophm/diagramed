@@ -14,13 +14,13 @@ export const propertyDefinitions = {
   extension: { name: 'Extension / compression', symbol: '\\Delta x', units: ['m', 'cm'] },
   surfaceChargeDensity: { name: 'Surface charge density', symbol: '\\sigma', units: ['C/m^2', 'µC/m^2'] }
 } satisfies Record<PropertyQuantity, { name: string; symbol: string; units: string[] }>;
-export interface PropertyDraft { symbol: string; state: 'known' | 'unknown'; unit: string; value?: number }
+export interface PropertyDraft { symbol?: string; generatedSymbol?: boolean; state: 'known' | 'unknown'; unit: string; value?: number }
 export function canonicalSymbol(symbol: string) { return symbol.trim().replace(/\s|[{}]/g, ''); }
 export type Representation = 'circle' | 'rectangle' | 'point' | 'surface' | 'spring' | 'cable' | 'none';
 export const categoryNames: Record<ObjectCategory,string> = {ordinary:'Ordinary physical object',spatialPoint:'Spatial point',planetSurface:'Planet Surface',spring:'Spring',cable:'String/Cable',chargedPlate:'Charged Plate',fluid:'Fluid'};
 export const categoryProperties: Record<ObjectCategory,PropertyQuantity[]> = {ordinary:['mass','charge','density'],spatialPoint:['charge'],planetSurface:['gravity'],spring:['springConstant','extension'],cable:[],chargedPlate:['surfaceChargeDensity'],fluid:['density']};
 export function propertySigned(key: PropertyQuantity) { return ['charge','extension','surfaceChargeDensity'].includes(key); }
-export function presetDraft(category: ObjectCategory): ObjectDraft { const properties: ObjectDraft['properties']={}; if(category==='planetSurface')properties.gravity={symbol:'g',state:'known',unit:'m/s^2',value:9.8}; if(category==='fluid')properties.density={symbol:'\\rho',state:'known',unit:'kg/m^3',value:1000}; return {name:category==='fluid'?'Water':categoryNames[category],category,representation:category==='planetSurface'?'none':category==='spatialPoint'?'point':['chargedPlate','fluid'].includes(category)?'surface':category==='spring'?'spring':category==='cable'?'cable':'circle',polarity:'positive',showName:true,showProperties:true,properties}; }
+export function presetDraft(category: ObjectCategory): ObjectDraft { const properties: ObjectDraft['properties']={}; if(category==='planetSurface')properties.gravity={state:'known',unit:'m/s^2',value:9.8}; if(category==='fluid')properties.density={state:'known',unit:'kg/m^3',value:1000}; return {name:category==='fluid'?'Water':categoryNames[category],category,representation:category==='planetSurface'?'none':category==='spatialPoint'?'point':['chargedPlate','fluid'].includes(category)?'surface':category==='spring'?'spring':category==='cable'?'cable':'circle',polarity:'positive',showName:true,showProperties:true,properties}; }
 export const objectPresets = (Object.keys(categoryNames) as ObjectCategory[]).filter(key=>key!=='ordinary').map(key=>({key,...presetDraft(key)}));
 export function setObjectVisibility(store: DocumentStore, id: string, visible: boolean) {
   const graphic = objectGraphic(store, id);
@@ -53,10 +53,10 @@ export function saveObject(store: DocumentStore, draft: ObjectDraft): string {
     for (const [quantity, property] of Object.entries(draft.properties)) {
       if (!property || !(Object.hasOwn(propertyDefinitions, quantity))) throw new Error('Unsupported physical property.');
       const key = quantity as PropertyQuantity; if(!categoryProperties[category].includes(key))throw new Error('Property is unavailable for this category.');
-      const definition = propertyDefinitions[key], symbol = property.symbol.trim();
+      const definition = propertyDefinitions[key], symbol = property.symbol?.trim() || `pending_{${id},${key}}`;
       if (!symbol || symbol.length > 80) throw new Error(`${definition.name} needs a symbol (maximum 80 characters).`);
-      if(Object.values(physicalConstants).some(c=>canonicalSymbol(c.symbol)===canonicalSymbol(symbol)))throw new Error('This symbol is reserved for a physical constant.');
-      const conflict = registry.find(v => canonicalSymbol(v.symbol) === canonicalSymbol(symbol));
+      if(property.symbol && !property.generatedSymbol && Object.values(physicalConstants).some(c=>canonicalSymbol(c.symbol)===canonicalSymbol(symbol)))throw new Error('This symbol is reserved for a physical constant.');
+      const conflict = property.symbol && !property.generatedSymbol && registry.find(v => canonicalSymbol(v.symbol) === canonicalSymbol(symbol));
       if (conflict) {
         const owner = next.semantics.objects.find(o => o.id === conflict.ownerObjectId)?.name;
         throw new Error(`The symbol ${symbol} is already used${owner ? ` by ${owner}` : ''}. Choose a distinct symbol, such as a different subscript.`);
@@ -65,7 +65,7 @@ export function saveObject(store: DocumentStore, draft: ObjectDraft): string {
       if (!['known', 'unknown'].includes(property.state)) throw new Error('Choose Known or Unknown for each property.');
       if (property.state === 'known' && (property.value === undefined || !Number.isFinite(property.value) || (!propertySigned(key) && property.value < 0))) throw new Error(`${definition.name} needs a finite ${key === 'charge' ? '' : 'nonnegative '}numerical value.`);
       if(key==='surfaceChargeDensity' && property.state==='known' && property.value!==0 && (property.value! < 0)!==(polarity==='negative')) throw new Error('Plate polarity and signed surface charge density must agree.');
-      const variable: Variable = { id: previousProperties[key] || crypto.randomUUID(), ownerObjectId: id, quantity: key, symbol, unit: property.unit, state: property.state };
+      const variable: Variable = { id: previousProperties[key] || crypto.randomUUID(), ownerObjectId: id, quantity: key, symbol, generatedSymbol: property.generatedSymbol ?? !property.symbol, unit: property.unit, state: property.state };
       if (property.state === 'known') variable.value = property.value;
       definitions[key] = variable.id; registry.push(variable);
     }
@@ -117,7 +117,7 @@ export function objectDraft(store: DocumentStore, id?: string): ObjectDraft {
   for (const [key, variableId] of Object.entries(object?.properties || {})) {
     if (!(Object.hasOwn(propertyDefinitions, key))) continue;
     const variable = store.document.semantics.variables.find(v => v.id === variableId);
-    if (variable) properties[key as PropertyQuantity] = { symbol: variable.symbol, unit: variable.unit || propertyDefinitions[key as PropertyQuantity].units[0], state: variable.state==='known'?'known':'unknown', value: variable.value };
+    if (variable) properties[key as PropertyQuantity] = { symbol: variable.symbol, generatedSymbol: !!variable.generatedSymbol, unit: variable.unit || propertyDefinitions[key as PropertyQuantity].units[0], state: variable.state==='known'?'known':'unknown', value: variable.value };
   }
   return { id, category:object?.category || 'ordinary',polarity:object?.polarity || 'positive', name: object?.name || '', representation: g?.visible === false ? 'none' : (g?.kind as Representation) || 'circle', showName: g?.label?.showName ?? true, showProperties: g?.label?.showProperties ?? true, properties };
 }

@@ -1,7 +1,7 @@
 import {initializeVectors} from './vector-ui';
 import {deleteVector} from './physics';
 import katex from 'katex';
-import { showPropertyFields, readPropertyFields } from './property-form';
+import { showPropertyFields, readPropertyFields, refreshPropertySymbols } from './property-form';
 import { DocumentStore, newDocument, type Graphic } from './model';
 import { DiagramRenderer } from './renderer';
 import { parseDocument, downloadDocument } from './persistence';
@@ -38,6 +38,7 @@ function openObject(id?: string) {
   $('#save-object').textContent = id ? 'Save object' : 'Create object';
   $('#object-error').textContent = '';
   showPropertyFields($('#property-fields'), draft.properties,draft.category);
+  refreshPropertyPreview();
   dialog.showModal();
 }
 $('#cancel-object').addEventListener('click', () => dialog.close());
@@ -48,7 +49,7 @@ $('#object-form').addEventListener('submit', async event => {
     await renderer.render(); selectObject(id); dialog.close();
   } catch (error) { $('#object-error').textContent = error instanceof Error ? error.message : String(error); } finally { busy = false; }
 });
-function applyPreset(category:ObjectCategory){const draft=presetDraft(category);configureCategory(category);$<HTMLInputElement>('#object-name').value=draft.name;$<HTMLSelectElement>('#object-representation').value=draft.representation;$<HTMLSelectElement>('#object-polarity').value=draft.polarity!;showPropertyFields($('#property-fields'),draft.properties,category);}
+function applyPreset(category:ObjectCategory){const draft=presetDraft(category);configureCategory(category);$<HTMLInputElement>('#object-name').value=draft.name;$<HTMLSelectElement>('#object-representation').value=draft.representation;$<HTMLSelectElement>('#object-polarity').value=draft.polarity!;showPropertyFields($('#property-fields'),draft.properties,category);refreshPropertyPreview();}
 $<HTMLSelectElement>('#object-preset').addEventListener('change',event=>{const key=(event.target as HTMLSelectElement).value;if(key==='custom')applyPreset('ordinary');else applyPreset(key as ObjectCategory);});
 $<HTMLSelectElement>('#object-category').addEventListener('change',event=>applyPreset((event.target as HTMLSelectElement).value as ObjectCategory));
 function showCollection() {
@@ -111,3 +112,6 @@ $<HTMLInputElement>('#file-input').addEventListener('change', async event => {
   finally { busy = false; chooser.value = ''; }
 });
 void renderer.render().catch(report);
+
+function refreshPropertyPreview(){refreshPropertySymbols($('#property-fields'),store.document,$<HTMLInputElement>('#object-name').value,$<HTMLSelectElement>('#object-category').value as ObjectCategory,editingId);}
+$('#object-name').addEventListener('input',refreshPropertyPreview);

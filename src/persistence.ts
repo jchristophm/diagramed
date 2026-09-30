@@ -4,6 +4,7 @@ import {assertExpressions} from './expressions';
 import {eligibility} from './eligibility';
 import { quantityUnits } from './physics';
 import { physicalConstants } from './constants';
+import {repairContactNotation} from './naming';
 import type { PropertyQuantity } from './semantics';
 type ObjectValue = Record<string, unknown>;
 function fail(message: string): never { throw new Error(`Cannot open diagram: ${message}`); }
@@ -80,6 +81,8 @@ export function parseDocument(text: string): DiagramDocument {
   }
   result.version = 3;
   if(d.version!==3)for(const physical of result.semantics.objects){physical.category ??= 'ordinary';}
+  validateRelationships(result);
+  repairContactNotation(result);
   validateRelationships(result);
   return result;
 }

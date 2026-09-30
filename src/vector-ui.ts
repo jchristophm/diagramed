@@ -1,8 +1,8 @@
 import {mountExpression,readExpression} from './expression-ui';
 import type {DiagramDocument} from './model';
-import {synchronizeSymbols} from './naming';
+import {generatedMagnitudeSymbol,synchronizeSymbols} from './naming';
 import katex from 'katex';
-import {DocumentStore} from './model';
+import {DocumentStore,newDocument} from './model';
 import {DiagramRenderer} from './renderer';
 import {saveVector,deleteVector,deleteInteraction,vectorGraphic,quantityUnits,type MagnitudeDraft,type VectorDraft} from './physics';
 import {eligibility,choiceAvailable,anyEligible,matchingSeparations,type Configuration,type VectorChoice} from './eligibility';
@@ -10,14 +10,14 @@ import type {Variable,PhysicalVector} from './semantics';
 const $=<T extends HTMLElement>(s:string)=>document.querySelector<T>(s)!;
 export function showMagnitude(host:HTMLElement,prefix:string,quantity:string,variable?:Variable, context?:{doc:DiagramDocument;vector:PhysicalVector}){
  host.replaceChildren();const add=(name:string,control:HTMLElement)=>{const label=document.createElement('label');label.textContent=name;label.append(control);host.append(label);};
- const symbol=document.createElement('input');symbol.id=`${prefix}-symbol`;symbol.maxLength=80;symbol.value=variable?.symbol||'';add('Symbol (LaTeX)',symbol);
+ const symbol=document.createElement('div');symbol.id=`${prefix}-preview`;symbol.className='symbol-preview';symbol.innerHTML=katex.renderToString(variable?.symbol||generatedMagnitudeSymbol(context?.doc||newDocument(),context?.vector,quantity),{throwOnError:false,trust:false,maxExpand:1000});host.append(symbol);
  const state=document.createElement('select');state.id=`${prefix}-state`;for(const key of context?['unknown','known','expression']:['unknown','known']){const option=document.createElement('option');option.value=key;option.textContent=key==='known'?'Known':key==='expression'?'Expression':'Unknown';state.append(option);}state.value=variable?.state||'unknown';add('Magnitude state',state);
  const value=document.createElement('input');value.id=`${prefix}-value`;value.inputMode='decimal';value.value=variable?.value===undefined?'':String(variable.value);add('Numerical magnitude',value);
  const unit=document.createElement('select');unit.id=`${prefix}-unit`;for(const name of quantityUnits[quantity]||[]){const option=document.createElement('option');option.textContent=name;unit.append(option);}unit.value=variable?.unit||quantityUnits[quantity]?.[0];add('Units',unit);
  const expression=document.createElement('div');expression.id=`${prefix}-expression`;host.append(expression);if(context)mountExpression(expression,context.doc,context.vector,variable?.expression);
  const refresh=()=>{expression.hidden=state.value!=='expression';value.disabled=state.value!=='known';value.required=state.value==='known';value.parentElement!.hidden=state.value!=='known';};state.addEventListener('change',refresh);refresh();
 }
-export function readMagnitude(prefix:string):MagnitudeDraft{const symbol=$<HTMLInputElement>(`#${prefix}-symbol`).value.trim();if(symbol)katex.renderToString(symbol,{throwOnError:true,trust:false,maxExpand:1000});const state=$<HTMLSelectElement>(`#${prefix}-state`).value as MagnitudeDraft['state'];const d:MagnitudeDraft={symbol:symbol||undefined,state,unit:$<HTMLSelectElement>(`#${prefix}-unit`).value};if(state==='expression')d.expression=readExpression($(`#${prefix}-expression`));if(state==='known'){const text=$<HTMLInputElement>(`#${prefix}-value`).value.trim();if(!text)throw new Error('Enter a numerical magnitude.');d.value=Number(text);}return d;}
+export function readMagnitude(prefix:string):MagnitudeDraft{const state=$<HTMLSelectElement>(`#${prefix}-state`).value as MagnitudeDraft['state'];const d:MagnitudeDraft={state,unit:$<HTMLSelectElement>(`#${prefix}-unit`).value};if(state==='expression')d.expression=readExpression($(`#${prefix}-expression`));if(state==='known'){const text=$<HTMLInputElement>(`#${prefix}-value`).value.trim();if(!text)throw new Error('Enter a numerical magnitude.');d.value=Number(text);}return d;}
 export function initializeVectors(store:DocumentStore,renderer:DiagramRenderer){
  const dialog=$<HTMLDialogElement>('#vector-dialog'),error=$('#vector-error');let editingId:string|undefined;let saving=false;
  const value=(id:string)=>$<HTMLSelectElement>(id).value;const variable=(id?:string)=>store.document.semantics.variables.find(v=>v.id===id);
