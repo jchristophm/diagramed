@@ -3,7 +3,7 @@ import { DocumentStore, type DiagramDocument, type Graphic } from './model';
 import { renderMath } from './math';
 import { displayedVector } from './physics';
 import { vectorLatex } from './naming';
-import { attachmentPoint, labelPosition } from './geometry';
+import { attachmentPoint, labelPosition, effectiveLabel } from './geometry';
 export class DiagramRenderer {
   readonly stage: Konva.Stage;
   private grid = new Konva.Layer({ listening: false });
@@ -106,7 +106,7 @@ export class DiagramRenderer {
     this.labels.set(e.id, group); this.layer.add(group); this.positionLabel(e.id);
     group.on('click tap', () => this.select(e.id));
     group.on('dblclick dbltap', () => this.onEdit(this.element(e.id)!));
-    group.on('dragend', () => { const current = this.element(e.id)!; const size=group.getClientRect({skipTransform:true}),anchor=labelPosition(this.currentGraphic(e.id),size.width,size.height,false); this.store.update(e.id, { label: { ...current.label!, offsetX: group.x() - anchor.x, offsetY: group.y() - anchor.y } }); this.select(e.id); });
+    group.on('dragend', () => { const current = this.element(e.id)!; const size=group.getClientRect({skipTransform:true}),anchor=labelPosition(this.currentGraphic(e.id),size.width,size.height,false); this.store.update(e.id, { label: { ...effectiveLabel(current)!, offsetX: group.x() - anchor.x, offsetY: group.y() - anchor.y } }); this.select(e.id); });
   }
   private refreshAttachments(){
     const doc=structuredClone(this.store.document);for(const g of doc.presentation.elements)if(g.semanticId && this.nodes.has(g.id))Object.assign(g,this.currentGraphic(g.id));

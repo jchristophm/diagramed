@@ -9,8 +9,9 @@ export function attachmentPoint(graphic: Graphic): { x: number; y: number } {
 }
 
 /** Screen-upright label anchor; offsets are presentation only, never physical geometry. */
+export function effectiveLabel(graphic:Graphic){const label=graphic.label;if(!label || label.placement)return label;if(graphic.vectorId && label.offsetX===12 && label.offsetY===12)return {...label,placement:'vectorTip' as const,offsetX:0,offsetY:0};if(graphic.semanticId && label.offsetX===24 && label.offsetY===24)return {...label,placement:'objectCenter' as const,offsetX:0,offsetY:28};return label;}
 export function labelPosition(graphic:Graphic,width:number,height:number,offsets=true){
- const label=graphic.label,center=attachmentPoint(graphic);let x=center.x,y=center.y;
+ const label=effectiveLabel(graphic),center=attachmentPoint(graphic);let x=center.x,y=center.y;
  if(label?.placement==='objectCenter'){x-=width/2;}
  else if(label?.placement==='vectorTip'){
   const a=graphic.rotation*Math.PI/180,dx=(graphic.points[2]-graphic.points[0])*graphic.scaleX,dy=(graphic.points[3]-graphic.points[1])*graphic.scaleY;

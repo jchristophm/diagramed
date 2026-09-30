@@ -73,7 +73,7 @@ export function saveObject(store: DocumentStore, draft: ObjectDraft): string {
     if (existing) existing.properties = definitions;
     else next.semantics.objects.push({ id, name, properties: definitions });
   }
-  if (existing) existing.name = name; else if (draft.properties === undefined) next.semantics.objects.push({ id, name, properties: {} });
+  if (existing) { existing.abbreviationName ??= existing.name; existing.name = name; } else if (draft.properties === undefined) next.semantics.objects.push({ id, name, properties: {} });
   const physical = next.semantics.objects.find(o=>o.id===id)!; physical.category=category; if(category==='chargedPlate')physical.polarity=polarity;
   let graphic = next.presentation.elements.find(e => e.semanticId === id);
   if (!graphic) {

@@ -1,8 +1,8 @@
 import type {DiagramDocument} from './model';
-import type {PhysicalVector,Variable,PropertyQuantity} from './semantics';
+import type {PhysicalVector,PropertyQuantity} from './semantics';
 import {physicalConstants} from './constants';
 const canonical=(s:string)=>s.replace(/\s|[{}]/g,'');
-const word=(s:string)=>s.replace(/[^a-zA-Z0-9]/g,'')||'O';
+const word=(s:string)=>s.replace(/[^a-zA-Z0-9]/g,'').slice(0,26)||'O';
 const ordered=<T extends {id:string}>(items:T[])=>[...items].sort((a,b)=>a.id.localeCompare(b.id));
 /** Stored abbreviations survive reordering/deletion. Names never establish semantic relationships. */
 export function abbreviate(doc:DiagramDocument){
@@ -34,9 +34,15 @@ export function vectorSymbol(doc:DiagramDocument,v:PhysicalVector){
  if(v.kind==='field')return `${v.fieldType==='gravitational'?'g':'E'}_{${ab(doc,v.sourceId)},${ab(doc,v.objectId)}}`;
  const i=doc.semantics.interactions.find(i=>i.id===v.interactionId);const p=v.role==='normal'?'N':v.role==='friction'?'f':i?.model==='nearSurface'?'W':i?.model==='cable'?'T':'F';return `${p}_{${ab(doc,i?.sourceId)},${ab(doc,v.objectId)}}`;
 }
-export function vectorLatex(symbol:string){const at=symbol.indexOf('_');return at<0?`\\vec{${symbol}}`:`\\vec{${symbol.slice(0,at)}}${symbol.slice(at)}`;}
+export function vectorLatex(symbol:string){if(/^\\(?:vec|overrightarrow)\{/.test(symbol))return symbol;const at=symbol.indexOf('_');return at<0?`\\vec{${symbol}}`:`\\vec{${symbol.slice(0,at)}}${symbol.slice(at)}`;}
 /** Only the unambiguous historical generic contact component gets corrected. Other authored notation stays custom. */
-export function repairContactNotation(doc:DiagramDocument){for(const v of doc.semantics.vectors){if(v.role!=='normal')continue;const m=doc.semantics.variables.find(n=>n.id===v.variableId),i=doc.semantics.interactions.find(i=>i.id===v.interactionId);if(m && i?.friction && canonical(m.symbol)===canonical(vectorSymbol(doc,{...v,role:undefined}))){m.generatedSymbol=true;m.symbol=vectorSymbol(doc,v);}}}
+export function repairContactNotation(doc:DiagramDocument){
+ for(const v of doc.semantics.vectors){if(v.role!=='normal')continue;const m=doc.semantics.variables.find(n=>n.id===v.variableId),i=doc.semantics.interactions.find(i=>i.id===v.interactionId);
+  if(!m || !i?.friction || canonical(m.symbol)!==canonical(vectorSymbol(doc,{...v,role:undefined})))continue;
+  m.generatedSymbol=true;
+  for(const role of ['normal','friction','resultant'] as const){const component=doc.semantics.vectors.find(n=>n.interactionId===i.id && n.role===role),variable=component && doc.semantics.variables.find(n=>n.id===component.variableId);if(!component || !variable?.generatedSymbol)continue;const base=vectorSymbol(doc,component);let symbol=base,n=2;while(doc.semantics.variables.some(other=>other.id!==variable.id && canonical(other.symbol)===canonical(symbol)))symbol=`${base.slice(0,-1)},${n++}}`;variable.symbol=symbol;}
+ }
+}
 export function synchronizeSymbols(doc:DiagramDocument){
  abbreviate(doc);repairContactNotation(doc);
  const taken=new Set([...Object.values(physicalConstants).map(c=>canonical(c.symbol)),...doc.semantics.variables.filter(v=>!v.generatedSymbol).map(v=>canonical(v.symbol))]);
