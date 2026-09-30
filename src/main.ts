@@ -1,6 +1,7 @@
 import katex from 'katex';
 import { DocumentStore, newDocument, newGraphic, type ElementKind, type Graphic } from './model';
 import { DiagramRenderer } from './renderer';
+import { parseDocument, downloadDocument } from './persistence';
 const container = document.querySelector<HTMLDivElement>('#container')!;
 const store = new DocumentStore(newDocument(container.clientWidth || 800, container.clientHeight || 600));
 const renderer = new DiagramRenderer(store, container);
@@ -31,6 +32,8 @@ async function action(name: string) {
     else if (name === 'toggleGrid') renderer.toggleGrid();
     else if (name === 'deleteSelected') renderer.deleteSelected();
     else if (name === 'closeMathModal') closeEditor();
+    else if (name === 'download') downloadDocument(store.document);
+    else if (name === 'open') document.querySelector<HTMLInputElement>('#file-input')!.click();
     else if (name === 'insertEquation') {
       const e = editing ? { ...editing } : newGraphic(editKind, store.document);
       if (editKind === 'text') e.text = input.value; else e.latex = input.value;
@@ -46,3 +49,16 @@ document.addEventListener('keydown', event => {
   if (event.key === 'Delete' && !(event.target instanceof HTMLInputElement) && !(event.target instanceof HTMLTextAreaElement)) renderer.deleteSelected();
 });
 void renderer.render().catch(report);
+document.querySelector<HTMLInputElement>('#file-input')!.addEventListener('change', async event => {
+  const chooser = event.target as HTMLInputElement, file = chooser.files?.[0];
+  if (!file || busy) return;
+  busy = true;
+  const previous = structuredClone(store.document);
+  try {
+    if (file.size > 10000000) throw new Error('Cannot open diagram: file exceeds the 10 MB limit.');
+    const candidate = parseDocument(await file.text());
+    await renderer.prepare(candidate);
+    store.replace(candidate); await renderer.render(); closeEditor(); status.textContent = `Opened ${file.name}`;
+  } catch (error) { store.replace(previous); await renderer.render().catch(() => {}); report(error); }
+  finally { busy = false; chooser.value = ''; }
+});
