@@ -45,7 +45,7 @@ export class DiagramRenderer {
     else if (e.kind === 'line') node = new Konva.Line({ ...base, points: e.points, hitStrokeWidth: 20 });
     else if (e.kind === 'arrow' || e.kind === 'dashedArrow') node = new Konva.Arrow({ ...base, points: e.points, fill: e.stroke, pointerLength: 10, pointerWidth: 10, hitStrokeWidth: 20, dash: e.kind === 'dashedArrow' ? [6, 4] : [] });
     else if (e.kind === 'text') node = new Konva.Text({ ...base, strokeWidth: 0, stroke: undefined, text: e.text, fontSize: e.fontSize, fontFamily: e.fontFamily });
-    else { const image = await renderMath(e.latex, e.fontSize); node = new Konva.Image({ ...base, stroke: undefined, strokeWidth: 0, image, width: image.width / 2, height: image.height / 2 }); }
+    else { const image = await renderMath(e.latex, e.fontSize); node = new Konva.Image({ ...base, fill: undefined, stroke: undefined, strokeWidth: 0, image, width: image.width / 2, height: image.height / 2 }); }
     this.nodes.set(e.id, node); this.layer.add(node);
     node.on('click tap', () => this.select(e.id));
     node.on('dblclick dbltap', () => { if (e.kind === 'text' || e.kind === 'latex') this.onEdit(this.element(e.id)!); });

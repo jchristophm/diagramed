@@ -1,0 +1,230 @@
+{
+  "format": "diagramed",
+  "version": 1,
+  "id": "example-document",
+  "metadata": {
+    "title": "Representative diagram",
+    "createdAt": "2026-09-30T00:00:00.000Z",
+    "updatedAt": "2026-09-30T00:00:00.000Z"
+  },
+  "semantics": {
+    "objects": [],
+    "interactions": [],
+    "variables": [],
+    "vectors": [],
+    "coordinateSystems": [],
+    "components": []
+  },
+  "presentation": {
+    "canvas": {
+      "width": 800,
+      "height": 600
+    },
+    "grid": {
+      "size": 20,
+      "visible": true
+    },
+    "elements": [
+      {
+        "id": "graphic-1",
+        "kind": "rectangle",
+        "x": 80,
+        "y": 120,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1,
+        "width": 40,
+        "height": 40,
+        "radius": 20,
+        "points": [
+          0,
+          0,
+          80,
+          0
+        ],
+        "stroke": "black",
+        "fill": "transparent",
+        "strokeWidth": 2,
+        "text": "Label",
+        "latex": "\\vec{F}=m\\vec{a}",
+        "fontSize": 20,
+        "fontFamily": "Arial"
+      },
+      {
+        "id": "graphic-2",
+        "kind": "circle",
+        "x": 140,
+        "y": 120,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1,
+        "width": 40,
+        "height": 40,
+        "radius": 20,
+        "points": [
+          0,
+          0,
+          80,
+          0
+        ],
+        "stroke": "black",
+        "fill": "transparent",
+        "strokeWidth": 2,
+        "text": "Label",
+        "latex": "\\vec{F}=m\\vec{a}",
+        "fontSize": 20,
+        "fontFamily": "Arial"
+      },
+      {
+        "id": "graphic-3",
+        "kind": "arrow",
+        "x": 200,
+        "y": 120,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1,
+        "width": 40,
+        "height": 40,
+        "radius": 20,
+        "points": [
+          0,
+          0,
+          80,
+          0
+        ],
+        "stroke": "red",
+        "fill": "transparent",
+        "strokeWidth": 2,
+        "text": "Label",
+        "latex": "\\vec{F}=m\\vec{a}",
+        "fontSize": 20,
+        "fontFamily": "Arial"
+      },
+      {
+        "id": "graphic-4",
+        "kind": "arrow",
+        "x": 260,
+        "y": 120,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1,
+        "width": 40,
+        "height": 40,
+        "radius": 20,
+        "points": [
+          0,
+          0,
+          80,
+          0
+        ],
+        "stroke": "red",
+        "fill": "transparent",
+        "strokeWidth": 2,
+        "text": "Label",
+        "latex": "\\vec{F}=m\\vec{a}",
+        "fontSize": 20,
+        "fontFamily": "Arial"
+      },
+      {
+        "id": "graphic-5",
+        "kind": "dashedArrow",
+        "x": 320,
+        "y": 120,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1,
+        "width": 40,
+        "height": 40,
+        "radius": 20,
+        "points": [
+          0,
+          0,
+          0,
+          -80
+        ],
+        "stroke": "black",
+        "fill": "transparent",
+        "strokeWidth": 2,
+        "text": "Label",
+        "latex": "\\vec{F}=m\\vec{a}",
+        "fontSize": 20,
+        "fontFamily": "Arial"
+      },
+      {
+        "id": "graphic-6",
+        "kind": "line",
+        "x": 380,
+        "y": 120,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1,
+        "width": 40,
+        "height": 40,
+        "radius": 20,
+        "points": [
+          0,
+          0,
+          80,
+          0
+        ],
+        "stroke": "black",
+        "fill": "transparent",
+        "strokeWidth": 2,
+        "text": "Label",
+        "latex": "\\vec{F}=m\\vec{a}",
+        "fontSize": 20,
+        "fontFamily": "Arial"
+      },
+      {
+        "id": "graphic-7",
+        "kind": "text",
+        "x": 440,
+        "y": 240,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1,
+        "width": 40,
+        "height": 40,
+        "radius": 20,
+        "points": [
+          0,
+          0,
+          80,
+          0
+        ],
+        "stroke": "black",
+        "fill": "black",
+        "strokeWidth": 2,
+        "text": "Label",
+        "latex": "\\vec{F}=m\\vec{a}",
+        "fontSize": 20,
+        "fontFamily": "Arial"
+      },
+      {
+        "id": "graphic-8",
+        "kind": "latex",
+        "x": 500,
+        "y": 240,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1,
+        "width": 40,
+        "height": 40,
+        "radius": 20,
+        "points": [
+          0,
+          0,
+          80,
+          0
+        ],
+        "stroke": "black",
+        "fill": "black",
+        "strokeWidth": 2,
+        "text": "Label",
+        "latex": "\\vec{F}=m\\vec{a}",
+        "fontSize": 20,
+        "fontFamily": "Arial"
+      }
+    ]
+  }
+}
