@@ -35,7 +35,7 @@ export function saveVector(store:DocumentStore,d:VectorDraft):string{
  let id=existing?.id||crypto.randomUUID();let interaction:Interaction|undefined;
  if(d.kind==='force'){
   const source=doc.semantics.objects.find(o=>o.id===d.sourceId)!;const model=d.interactionType==='gravitational'?(source.category==='planetSurface'?'nearSurface':'universal'):d.interactionType==='electric'?'pointSource':d.contactType||'ordinary';
-  interaction=existing?.interactionId?doc.semantics.interactions.find(i=>i.id===existing.interactionId):doc.semantics.interactions.find(i=>i.kind===d.interactionType && i.sourceId===d.sourceId && i.targetId===d.targetId && i.model===model && i.separationId===d.separationId && i.friction===d.friction);
+  interaction=existing?.interactionId?doc.semantics.interactions.find(i=>i.id===existing!.interactionId):doc.semantics.interactions.find(i=>i.kind===d.interactionType && i.sourceId===d.sourceId && i.targetId===d.targetId && i.model===model && i.separationId===d.separationId && i.friction===d.friction);
   if(!interaction){interaction={id:crypto.randomUUID(),kind:d.interactionType!,model,sourceId:d.sourceId,targetId:d.targetId,objectIds:[d.sourceId!,d.targetId!],properties:{}};doc.semantics.interactions.push(interaction);}
   if(existing && (interaction.sourceId!==d.sourceId || interaction.targetId!==d.targetId || interaction.kind!==d.interactionType || interaction.model!==model))throw new Error('A saved vector retains its interaction. Create a different vector for another relationship.');
   interaction.separationId=d.separationId;interaction.friction=d.friction;interaction.resultantVisible=!!d.resultantVisible;
