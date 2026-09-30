@@ -108,3 +108,5 @@ fieldset { margin:12px 0; padding:0 12px 12px; border:1px solid #ddd; border-rad
 .object-state { font-size:12px; color:#555; }
 .object-row button { min-width:44px; }
 .expression-palette{display:flex;flex-wrap:wrap;gap:5px}.expression-palette button{min-width:36px;min-height:36px}.expression-preview{padding:12px;min-height:36px;overflow-x:auto}.expression-error{color:#a22}
+#vector-list .object-row{grid-template-columns:repeat(2,minmax(0,1fr))}#vector-list button{overflow-wrap:anywhere;min-width:0}.expression-palette input{max-width:140px}button:disabled{cursor:default;opacity:.45}
+@media(max-width:600px){#toolbar-top{gap:4px;padding:0 6px}#toolbar-top button{padding:4px 8px;font-size:13px}#selected-name{display:none}}
