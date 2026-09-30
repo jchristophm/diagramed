@@ -109,7 +109,7 @@ export function deleteObject(store: DocumentStore, id: string) {
   next.semantics.objects = next.semantics.objects.filter(o => o.id !== id);
   next.semantics.variables = next.semantics.variables.filter(v => !ownedIds.has(v.id));
   next.presentation.elements = next.presentation.elements.filter(e => e.semanticId !== id);
-  next.metadata.updatedAt = new Date().toISOString(); store.replace(next);
+  synchronizeSymbols(next); next.metadata.updatedAt = new Date().toISOString(); store.replace(next);
 }
 export function objectDraft(store: DocumentStore, id?: string): ObjectDraft {
   const object = store.document.semantics.objects.find(o => o.id === id), g = id ? objectGraphic(store, id) : undefined;

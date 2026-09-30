@@ -53,6 +53,6 @@ Run `npm ci`, `npm test`, `npm run build`, `npx playwright install --with-deps c
 
 GitHub Actions verifies development pushes/PRs, deploys development after verification, then uses a separate runner to repeat desktop/mobile acceptance against the live URL. Local Chromium launches are currently prohibited by the cloud workspace socket restriction; GitHub runners perform browser checks. Real touchscreen testing remains the user's responsibility. PR previews are not configured.
 
-`examples/scenario-A` through `scenario-F` contain representative student-authored models/expressions. They are example documents, not UI equation templates. `representative.diagramed.json` and `version2.diagramed.json` remain genuine legacy fixtures. See docs/FORMAT.md, docs/STATUS.md and the three historical development contracts.
+`examples/scenario-A` through `scenario-F` contain representative student-authored models/expressions. They are example documents, not UI equation templates. `representative.diagramed.json` and `version2.diagramed.json` remain genuine legacy fixtures. See docs/FORMAT.md, docs/STATUS.md and the historical development contracts and Contract 3.1 refinements.
 
 Contract 3.1 refines notation and presentation without adding physics categories, coordinate systems, equations or solving. The native format remains version 3. See docs/DEVELOPMENT_CONTRACT_3_1.md and the final verification record in docs/STATUS.md.

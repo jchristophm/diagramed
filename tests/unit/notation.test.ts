@@ -1,6 +1,6 @@
 import {it,expect} from 'vitest';
 import {DocumentStore} from '../../src/model';
-import {saveObject,objectDraft,presetDraft} from '../../src/objects';
+import {saveObject,deleteObject,objectDraft,presetDraft} from '../../src/objects';
 import {saveVector,saveSeparation} from '../../src/physics';
 import {synchronizeSymbols,vectorLatex} from '../../src/naming';
 import {parseDocument,serializeDocument} from '../../src/persistence';
@@ -29,3 +29,5 @@ it('multiple relationships with the same notation get distinct symbols without r
 it('long and prefix-identical names remain readable within notation limits',()=>{const s=new DocumentStore();make(s,'A'.repeat(119)+'B');make(s,'A'.repeat(119)+'C');expect(new Set(s.document.semantics.objects.map(o=>o.abbreviation)).size).toBe(2);expect(s.document.semantics.variables.every(v=>v.symbol.length<=80)).toBe(true);expect(parseDocument(serializeDocument(s.document))).toEqual(s.document);});
 
 it('vector presentation keeps complex historical markup intact',()=>{expect(vectorLatex('\\frac{F_1}{2}')).toBe('\\vec{\\frac{F_1}{2}}');expect(vectorLatex('\\vec{u}_{custom}')).toBe('\\vec{u}_{custom}');});
+
+it('removing a second spring or environment restores singleton notation and keeps remaining IDs',()=>{const s=new DocumentStore();const spring=saveObject(s,{...presetDraft('spring'),name:'Spring',properties:{springConstant:{state:'unknown',unit:'N/m'},extension:{state:'unknown',unit:'m'}}});const second=saveObject(s,{...presetDraft('spring'),name:'Elastic'});const ids=Object.values(s.document.semantics.objects.find(o=>o.id===spring)!.properties!);deleteObject(s,second);expect(ids.map(id=>symbol(s,id))).toEqual(['k','\\Delta x']);const p=saveObject(s,presetDraft('planetSurface')),other=saveObject(s,{...presetDraft('planetSurface'),name:'Mars'}),gravity=s.document.semantics.objects.find(o=>o.id===p)!.properties!.gravity;deleteObject(s,other);expect(symbol(s,gravity)).toBe('g');expect(parseDocument(serializeDocument(s.document))).toEqual(s.document);});
