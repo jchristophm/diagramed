@@ -47,7 +47,7 @@ export class DiagramRenderer {
   }
   async addNode(e: Graphic) {
     if (e.visible === false) return;
-    const base = { id: e.id, x: e.x, y: e.y, rotation: e.rotation, scaleX: e.scaleX, scaleY: e.scaleY, stroke: e.stroke, strokeWidth: e.strokeWidth, fill: e.fill, draggable: true };
+    const base = { id: e.id, x: e.x, y: e.y, rotation: e.rotation, scaleX: e.scaleX, scaleY: e.scaleY, stroke: e.stroke, strokeWidth: e.strokeWidth, strokeScaleEnabled: !e.semanticId, fill: e.fill, draggable: true };
     let node: Konva.Shape;
     if (e.kind === 'rectangle') node = new Konva.Rect({ ...base, width: e.width, height: e.height });
     else if (e.kind === 'circle' || e.kind === 'point') node = new Konva.Circle({ ...base, radius: e.radius, hitStrokeWidth: e.kind === 'point' ? 28 : 2 });
@@ -56,6 +56,12 @@ export class DiagramRenderer {
     else if (e.kind === 'text') node = new Konva.Text({ ...base, strokeWidth: 0, stroke: undefined, text: e.text, fontSize: e.fontSize, fontFamily: e.fontFamily });
     else { const image = await renderMath(e.latex, e.fontSize); node = new Konva.Image({ ...base, fill: undefined, stroke: undefined, strokeWidth: 0, image, width: image.width / 2, height: image.height / 2 }); }
     this.nodes.set(e.id, node); this.layer.add(node);
+    if (e.kind === 'point') {
+      node.hitStrokeWidth(0);
+      node.hitFunc((context, shape) => {
+        context.beginPath(); context.arc(0, 0, 22 / this.stage.scaleX(), 0, Math.PI * 2, false); context.closePath(); context.fillStrokeShape(shape);
+      });
+    }
     if (e.semanticId) await this.addLabel(e);
     node.on('click tap', () => this.select(e.id));
     node.on('dblclick dbltap', () => { if (e.semanticId || e.kind === 'text' || e.kind === 'latex') this.onEdit(this.element(e.id)!); });
@@ -116,7 +122,12 @@ export class DiagramRenderer {
         handle.on('dragmove', () => move(handle)); hit.on('dragmove', () => move(hit));
         this.controls.add(handle, hit);
       }
-    } else if (e.kind === 'point') { node.stroke('orange'); } else { if (e.kind !== 'text' && e.kind !== 'latex') node.stroke('orange'); this.transformer.nodes([node]); }
+    } else if (e.kind === 'point') { node.stroke('orange'); } else {
+      if (e.kind !== 'text' && e.kind !== 'latex') node.stroke('orange');
+      this.transformer.keepRatio(e.kind !== 'rectangle');
+      if (e.kind === 'circle' && e.semanticId) this.transformer.enabledAnchors(['top-left','top-right','bottom-left','bottom-right']);
+      this.transformer.nodes([node]);
+    }
     this.stage.batchDraw();
   }
   deleteSelected() { if (this.selectedId) { const id = this.selectedId; if (this.element(id)?.semanticId) throw new Error('Semantic objects must be deleted through the object operations.'); this.select(null); this.nodes.get(id)?.destroy(); this.labels.get(id)?.destroy(); this.nodes.delete(id); this.labels.delete(id); this.store.remove(id); this.stage.draw(); } }

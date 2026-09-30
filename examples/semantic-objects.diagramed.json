@@ -1,0 +1,156 @@
+{
+  "format": "diagramed",
+  "version": 2,
+  "id": "semantic-example",
+  "metadata": {
+    "title": "Rock Table Earth",
+    "createdAt": "2026-09-30T00:00:00.000Z",
+    "updatedAt": "2026-09-30T00:00:00.000Z"
+  },
+  "semantics": {
+    "objects": [
+      {
+        "id": "rock",
+        "name": "Rock",
+        "properties": {
+          "mass": "rock-mass"
+        }
+      },
+      {
+        "id": "table",
+        "name": "Table",
+        "properties": {}
+      },
+      {
+        "id": "earth",
+        "name": "Earth",
+        "properties": {}
+      }
+    ],
+    "interactions": [],
+    "variables": [
+      {
+        "id": "rock-mass",
+        "symbol": "m_2",
+        "quantity": "mass",
+        "ownerObjectId": "rock",
+        "state": "unknown",
+        "unit": "kg"
+      }
+    ],
+    "vectors": [],
+    "coordinateSystems": [],
+    "components": []
+  },
+  "presentation": {
+    "canvas": {
+      "width": 800,
+      "height": 600
+    },
+    "grid": {
+      "size": 20,
+      "visible": true
+    },
+    "elements": [
+      {
+        "id": "graphic-rock",
+        "kind": "circle",
+        "x": 200,
+        "y": 160,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1,
+        "width": 40,
+        "height": 40,
+        "radius": 20,
+        "points": [
+          0,
+          0,
+          80,
+          0
+        ],
+        "stroke": "#333",
+        "fill": "transparent",
+        "strokeWidth": 2,
+        "text": "Label",
+        "latex": "\\vec{F}=m\\vec{a}",
+        "fontSize": 20,
+        "fontFamily": "Arial",
+        "semanticId": "rock",
+        "visible": true,
+        "label": {
+          "showName": true,
+          "showProperties": true,
+          "offsetX": 24,
+          "offsetY": 24
+        }
+      },
+      {
+        "id": "graphic-table",
+        "kind": "rectangle",
+        "x": 280,
+        "y": 320,
+        "rotation": 0,
+        "scaleX": 5,
+        "scaleY": 1,
+        "width": 40,
+        "height": 40,
+        "radius": 20,
+        "points": [
+          0,
+          0,
+          80,
+          0
+        ],
+        "stroke": "#333",
+        "fill": "transparent",
+        "strokeWidth": 2,
+        "text": "Label",
+        "latex": "\\vec{F}=m\\vec{a}",
+        "fontSize": 20,
+        "fontFamily": "Arial",
+        "semanticId": "table",
+        "visible": true,
+        "label": {
+          "showName": true,
+          "showProperties": true,
+          "offsetX": 24,
+          "offsetY": 24
+        }
+      },
+      {
+        "id": "graphic-earth",
+        "kind": "circle",
+        "x": 400,
+        "y": 300,
+        "rotation": 0,
+        "scaleX": 1,
+        "scaleY": 1,
+        "width": 40,
+        "height": 40,
+        "radius": 20,
+        "points": [
+          0,
+          0,
+          80,
+          0
+        ],
+        "stroke": "#333",
+        "fill": "transparent",
+        "strokeWidth": 2,
+        "text": "Label",
+        "latex": "\\vec{F}=m\\vec{a}",
+        "fontSize": 20,
+        "fontFamily": "Arial",
+        "semanticId": "earth",
+        "visible": false,
+        "label": {
+          "showName": true,
+          "showProperties": true,
+          "offsetX": 24,
+          "offsetY": 24
+        }
+      }
+    ]
+  }
+}

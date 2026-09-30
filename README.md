@@ -1,34 +1,35 @@
 # Diagramed
 
-Independent browser diagram editor, imported from the Problemly vector editor. The original source is preserved verbatim in `original/`; see `SOURCE.md` for provenance. Original files are reference material, not the active application.
+Object-first semantic physics editor, independent of Problemly. Live development app: https://jchristophm.github.io/diagramed/ . Source: `development`. `main` preserves the original import checkpoint; `original/` preserves the untouched source. No writes or deployment changes target Problemly.
 
-## Architecture
+## Use
 
-- `src/model.ts`: authoritative native document and graphical primitives, persistent UUIDs, document editing operations.
-- `src/semantics.ts`: independent typed definitions for future objects, interactions, variables, vectors, coordinate systems and components. Generic graphics have no inferred physical meaning.
-- `src/renderer.ts`: Konva instances and transient selection controls; pointer interactions commit changes into the model. Canvas presentation scales to the viewport without changing stored geometry.
-- `src/math.ts`: regenerated KaTeX rendering from editable LaTeX source; cached images are transient.
-- `src/main.ts`: tools, label/math editor, file picker, loading and downloading. File loads validate and pre-render math before replacing the current document.
-- `src/persistence.ts`: version checking, validation, human-readable JSON serialization.
+**Object** defines a physical object before creating its representation. Choose circle, rectangle, point, or no visible representation. All describe point-like physical objects; a rectangle may visually represent a table without implying extended-body mechanics. Earth is available under Start with; it starts hidden and adds no constants or forces.
 
-Future semantic creation should add model operations that create definitions first, then optionally create graphics with independent `id` and `semanticId`. Define relationship constraints in the semantic/model layer, never in Konva. Assessment consumes the native document. This milestone does not execute physics constraints or calculations.
+Select optional mass, electric charge or density, define a LaTeX symbol and choose Unknown or Known. A known property requires a finite value in one of the offered appropriate units. Mass/density cannot be negative; charge may be signed. Undefined properties are absent, never zero. Unknown properties contain no numerical value. Symbol collisions produce guidance; use distinct subscripts. Editing a symbol or value preserves its variable ID. Unchecking a property removes its owned variable.
 
-## Development and checks
+**Objects** opens a compact collection containing visible and hidden definitions. Select a name to locate its representation, or use Edit, Hide/Show and Delete. Selecting on the canvas and in the collection uses the same semantic record. A visible object's name/property symbols are generated from its definition; optional labels can be switched off in Edit. Drag a label to position it independently. Double-click/double-tap an object or its label to edit its definition. Points have enlarged hit targets. Rectangles resize independently horizontally/vertically. Moving/resizing changes graphics, not semantic IDs.
 
-`npm ci`, `npm test`, `npm run build`, `npx playwright install --with-deps chromium`, `npm run test:browser`. `npm run dev` starts a local preview in Work. No local environment is needed on the user's computer.
+**Open**, **Grid**, **Delete**, **Save** provide JSON opening, grid visibility, selected-object deletion and JSON downloading. Hiding preserves the saved appearance, transform, labels and position. JSON v1 files still load as legacy graphics and remain editable, but no generic creation tools are offered. Text/math on imported graphics edit with double-click/double-tap. There is no autosave, undo or unsaved-change prompt; download before leaving the page.
 
-Work is on `development`; `main` preserves the untouched import checkpoint. Each milestone is pushed independently. GitHub Actions tests pull requests and rebuilds/deploys pushes to `development`, only after unit, compilation and desktop/mobile browser tests pass.
+## Architecture and extension points
 
-## One-time GitHub Pages setup
+- `src/model.ts`: one authoritative document store, independent graphical IDs, presentation records. Konva is never the document database.
+- `src/semantics.ts`: physical objects, variables and reserved interaction/vector/coordinate/component types.
+- `src/objects.ts`: atomic confirmed object edits, property variable registry, visibility, presets and dependency-aware deletion. Property ownership is explicit, not based on a displayed symbol. UI drafts do not mutate the document.
+- `src/property-form.ts`: property form draft and LaTeX previews; validates input before calling model operations.
+- `src/geometry.ts`: `attachmentPoint()` computes a stable central attachment location from stored geometry and transforms, without Konva.
+- `src/renderer.ts`: reusable Konva interactions, independent touch targets, selection and derived synchronized labels. Label pixels, selection handles and Konva instances are transient.
+- `src/main.ts`: object dialogs, collection, document controls, selection routing and legacy editing.
+- `src/persistence.ts`: v1 migration, v2 validation and readable JSON.
+- `src/math.ts`: cached internal KaTeX raster rendering from stored LaTeX source.
 
-In this repository only, open **Settings → Pages → Build and deployment → Source → GitHub Actions**. If the `github-pages` environment restricts deployment branches, allow `development`. Then rerun the Verify and deploy workflow if necessary. Expected URL after successful deployment: https://jchristophm.github.io/diagramed/ . A URL is not evidence of a successful deployment; verify the workflow's deploy job before claiming it is live.
+Phase 3 should add interaction/vector commands beside object commands, reference object IDs and variable IDs, and use `attachmentPoint()` for graphical attachment. Extend the quantity/type definitions and relationship validator for vector-owned variables. Do not infer physics from shape, position or label. The deletion policy currently removes owned property variables and linked graphics; it refuses deletion/removal when preserved interactions, vectors or components depend on them. This is the hook for future relationship-aware deletion. No forces or other vector creation, assessment, coordinates or Mathed features are implemented.
 
-No Problemly hosting settings, branches or files are changed. No accounts, backend storage, authentication, image exports or Bubble messaging are part of the active application.
+## Build, tests and deployment
 
-## Preserved controls and limitations
+`npm ci`, `npm test`, `npm run build`, `npx playwright install --with-deps chromium`, `npm run test:browser`. Browser tests run against compiled assets via Vite preview. `npm run dev` starts development. `TEST_URL=https://jchristophm.github.io/diagramed/ npm run test:browser` checks the live app.
 
-Top toolbar: solid arrow, dashed arrow, line, box, circle. Bottom toolbar: Open JSON, math, label, grid visibility, delete, Download JSON. Drag unselected lines/arrows; select them to adjust independent endpoints with enlarged touch targets. Other elements use Konva resize/rotation controls. Labels and math edit on double-click/double-tap; the label editor uses a modal to avoid the source's inconsistent textarea cancellation. Grid snapping remains active when the grid is hidden. Delete key does not delete elements while typing.
+GitHub Actions verifies pushes to `development` and pull requests, then deploys development after unit tests, TypeScript compilation/build and desktop/mobile browser tests pass. Pages is enabled with GitHub Actions and the environment allows `development`. All work is checkpointed to GitHub. Real mobile touchscreen acceptance remains separate from automated emulation. PR preview hosting is not configured.
 
-Document coordinates are independent of viewport dimensions; changing screen size scales the view. New documents start at the available canvas size. Selection, transformer handles and touch hit zones never enter JSON. There is no undo, unsaved-change prompt or multi-selection, matching the scope of the original editor. Label wrapping uses natural text width. LaTeX rendering is an internal raster display, recreated from source; no PNG/SVG export is offered. Real touchscreen testing remains a user acceptance step even after mobile emulation passes.
-
-See `docs/FORMAT.md` and `examples/representative.diagramed.json` for the native format.
+See `docs/FORMAT.md`, `docs/STATUS.md`, `docs/DEVELOPMENT_CONTRACT_2.md` and `examples/semantic-objects.diagramed.json`.

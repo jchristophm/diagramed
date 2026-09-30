@@ -33,7 +33,7 @@ export function saveObject(store: DocumentStore, draft: ObjectDraft): string {
     if (next.semantics.objects.some(o => o.id !== id && Object.values(o.properties || {}).some(v => previousIds.has(v)))) throw new Error('This property variable is shared by another object. Shared ownership needs to be resolved before editing it.');
     const registry = next.semantics.variables.filter(v => !previousIds.has(v.id));
     for (const [quantity, property] of Object.entries(draft.properties)) {
-      if (!property || !(quantity in propertyDefinitions)) throw new Error('Unsupported physical property.');
+      if (!property || !(Object.hasOwn(propertyDefinitions, quantity))) throw new Error('Unsupported physical property.');
       const key = quantity as PropertyQuantity, definition = propertyDefinitions[key], symbol = property.symbol.trim();
       if (!symbol || symbol.length > 80) throw new Error(`${definition.name} needs a symbol (maximum 80 characters).`);
       const conflict = registry.find(v => canonicalSymbol(v.symbol) === canonicalSymbol(symbol));
@@ -87,7 +87,7 @@ export function objectDraft(store: DocumentStore, id?: string): ObjectDraft {
   const object = store.document.semantics.objects.find(o => o.id === id), g = id ? objectGraphic(store, id) : undefined;
   const properties: ObjectDraft['properties'] = {};
   for (const [key, variableId] of Object.entries(object?.properties || {})) {
-    if (!(key in propertyDefinitions)) continue;
+    if (!(Object.hasOwn(propertyDefinitions, key))) continue;
     const variable = store.document.semantics.variables.find(v => v.id === variableId);
     if (variable) properties[key as PropertyQuantity] = { symbol: variable.symbol, unit: variable.unit || propertyDefinitions[key as PropertyQuantity].units[0], state: variable.state || (variable.value === undefined ? 'unknown' : 'known'), value: variable.value };
   }
