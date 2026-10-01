@@ -8,6 +8,8 @@ export interface Graphic {
   text: string; latex: string; fontSize: number; fontFamily: string;
   visible?: boolean;
   showComponents?: boolean;
+  // Dormant arrow geometry for returning a known-zero motion label to an arrow.
+  motionArrowPoints?: [number, number, number, number];
   label?: { placement?: 'objectCenter'|'vectorTip'; showName: boolean; showProperties: boolean; offsetX: number; offsetY: number };
 }
 export interface DiagramDocument {

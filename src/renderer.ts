@@ -2,7 +2,7 @@ import Konva from 'konva';
 import { coordinateBasis, graphicalComponents, deleteCoordinates } from './coordinates';
 import { DocumentStore, type DiagramDocument, type Graphic } from './model';
 import { renderMath } from './math';
-import { displayedVector } from './physics';
+import { displayedVector, isZeroMotionVector, zeroMotionLabelGraphic } from './physics';
 import { vectorLatex } from './naming';
 import { attachmentPoint, labelPosition, effectiveLabel } from './geometry';
 export class DiagramRenderer {
@@ -23,7 +23,7 @@ export class DiagramRenderer {
   onEdit: (element: Graphic) => void = () => {};
   onSelect: (element: Graphic | null) => void = () => {};
   private symbols(e: Graphic, doc = this.store.document) {
-    if(e.vectorId){const v=doc.semantics.vectors.find(v=>v.id===e.vectorId);return doc.semantics.variables.find(variable=>variable.id===v?.variableId)?.symbol ? vectorLatex(doc.semantics.variables.find(variable=>variable.id===v?.variableId)!.symbol) : '';}
+    if(e.vectorId){const v=doc.semantics.vectors.find(v=>v.id===e.vectorId),m=doc.semantics.variables.find(variable=>variable.id===v?.variableId);if(v&&isZeroMotionVector(doc,v))return `${m!.symbol}=0\\,\\mathrm{${m!.unit}}`;return m?.symbol ? vectorLatex(doc.semantics.variables.find(variable=>variable.id===v?.variableId)!.symbol) : '';}
     const object = doc.semantics.objects.find(o => o.id === e.semanticId);
     return Object.values(object?.properties || {}).map(id => doc.semantics.variables.find(v => v.id === id)?.symbol).filter(Boolean).join(',\\; ');
   }
@@ -69,7 +69,8 @@ export class DiagramRenderer {
     if (e.visible === false) return;
     const base = { id: e.id, x: e.x, y: e.y, rotation: e.rotation, scaleX: e.scaleX, scaleY: e.scaleY, stroke: e.stroke, strokeWidth: e.strokeWidth, strokeScaleEnabled: !e.semanticId, fill: e.fill, draggable: true };
     let node: Konva.Shape;
-    if(e.kind==='surface'){
+    if(e.vectorId && isZeroMotionVector(this.store.document,this.store.document.semantics.vectors.find(v=>v.id===e.vectorId)!)){node=new Konva.Circle({...base,name:'zero-motion-anchor',radius:0,visible:false,listening:false});}
+    else if(e.kind==='surface'){
       node=new Konva.Rect({...base,width:e.width,height:e.height,draggable:true});
       node.hitFunc((context,shape)=>{context.beginPath();context.rect(0,-10,e.width,20);context.closePath();context.fillStrokeShape(shape);});
       const physical=this.store.document.semantics.objects.find(o=>o.id===e.semanticId);
@@ -103,7 +104,8 @@ export class DiagramRenderer {
   }
   private currentGraphic(id: string): Graphic {
     const e = this.element(id)!, node = this.nodes.get(id)!;
-    return { ...e, x: node.x(), y: node.y(), rotation: node.rotation(), scaleX: node.scaleX(), scaleY: node.scaleY(), ...(node instanceof Konva.Line?{points:node.points() as Graphic['points']}:{}) };
+    const current:Graphic = { ...e, x: node.x(), y: node.y(), rotation: node.rotation(), scaleX: node.scaleX(), scaleY: node.scaleY(), ...(node instanceof Konva.Line?{points:node.points() as Graphic['points']}:{}) };
+    const v=e.vectorId&&this.store.document.semantics.vectors.find(v=>v.id===e.vectorId);return v&&isZeroMotionVector(this.store.document,v)?zeroMotionLabelGraphic(current):current;
   }
   private positionLabel(id: string) {
     const e = this.element(id), label = this.labels.get(id); if (!e || !label) return;
@@ -126,12 +128,12 @@ export class DiagramRenderer {
   }
   private refreshAttachments(){
     const doc=structuredClone(this.store.document);for(const g of doc.presentation.elements)if(g.semanticId && this.nodes.has(g.id))Object.assign(g,this.currentGraphic(g.id));
-    for(const g of doc.presentation.elements){if(!g.vectorId)continue;const v=doc.semantics.vectors.find(v=>v.id===g.vectorId),node=this.nodes.get(g.id);if(!v||!node)continue;const current=displayedVector(doc,v,g);if(!current)continue;node.position({x:current.x,y:current.y});(node as Konva.Line).points(current.points);this.positionLabel(g.id);}
+    for(const g of doc.presentation.elements){if(!g.vectorId)continue;const v=doc.semantics.vectors.find(v=>v.id===g.vectorId),node=this.nodes.get(g.id);if(!v||!node)continue;const current=displayedVector(doc,v,g);if(!current)continue;node.position({x:current.x,y:current.y});if(node instanceof Konva.Line)node.points(current.points);this.positionLabel(g.id);}
     this.refreshOrigins(doc); void this.refreshComponents();
   }
   private refreshOrigins(doc:DiagramDocument){
     this.origins.destroyChildren();const counts=new Map<string,number>();
-    for(const v of doc.semantics.vectors){const g=doc.presentation.elements.find(g=>g.vectorId===v.id);if(v.kind==='separation'||!v.objectId||!g||g.visible===false||!displayedVector(doc,v,g))continue;counts.set(v.objectId,(counts.get(v.objectId)||0)+1);}
+    for(const v of doc.semantics.vectors){const g=doc.presentation.elements.find(g=>g.vectorId===v.id);if(v.kind==='separation'||isZeroMotionVector(doc,v)||!v.objectId||!g||g.visible===false||!displayedVector(doc,v,g))continue;counts.set(v.objectId,(counts.get(v.objectId)||0)+1);}
     for(const [id,count]of counts){if(count<2)continue;const graphic=doc.presentation.elements.find(g=>g.semanticId===id);if(!graphic)continue;const point=attachmentPoint(graphic);this.origins.add(new Konva.Circle({name:'shared-origin',ownerObjectId:id,x:point.x,y:point.y,radius:3.5/(this.stage.scaleX()||1),fill:'#000',listening:false}));}
     this.origins.batchDraw();
   }
@@ -150,6 +152,7 @@ export class DiagramRenderer {
     if (this.store.document.semantics.coordinateSystems.some(c => c.id === id)) { this.coordinateHandles(); this.stage.batchDraw(); return; }
     const e = this.element(id), node = this.nodes.get(id);
     if (!e || !node) return;
+    const selectedMotion=e.vectorId&&this.store.document.semantics.vectors.find(v=>v.id===e.vectorId);if(selectedMotion&&isZeroMotionVector(this.store.document,selectedMotion)){this.stage.batchDraw();return;}
     if (['line', 'arrow', 'dashedArrow','spring','cable'].includes(e.kind)) {
       node.stroke('orange'); node.draggable(false);
       const v=e.vectorId && this.store.document.semantics.vectors.find(v=>v.id===e.vectorId);

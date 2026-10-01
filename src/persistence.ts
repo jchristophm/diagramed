@@ -2,7 +2,7 @@ import { newGraphic, type DiagramDocument } from './model';
 import { canonicalSymbol, propertyDefinitions, propertySigned, categoryNames, categoryProperties } from './objects';
 import {assertExpressions} from './expressions';
 import {eligibility} from './eligibility';
-import { quantityUnits } from './physics';
+import { quantityUnits, isZeroMotionVector, synchronizeMotionPresentation } from './physics';
 import { physicalConstants } from './constants';
 import {repairContactNotation} from './naming';
 import type { PropertyQuantity } from './semantics';
@@ -34,6 +34,7 @@ export function parseDocument(text: string): DiagramDocument {
     if (e.scaleX === 0 || e.scaleY === 0 || (e.strokeWidth as number) < 0) fail('invalid element scale or stroke width.');
     for (const key of ['stroke', 'fill', 'text', 'latex', 'fontFamily']) string(e[key], `element.${key}`);
     const points = list(e.points, 'points'); if (points.length !== 4) fail('line endpoints require four coordinates.'); points.forEach(v => number(v, 'endpoint'));
+    if(e.motionArrowPoints!==undefined){const remembered=list(e.motionArrowPoints,'dormant motion arrow geometry');if(remembered.length!==4)fail('dormant motion arrow geometry requires four coordinates.');remembered.forEach(v=>number(v,'dormant motion arrow coordinate'));if(remembered[0]!==0||remembered[1]!==0||Math.hypot(remembered[2] as number,remembered[3] as number)===0)fail('invalid dormant motion arrow geometry.');}
     if(e.vectorId!==undefined)string(e.vectorId,'vector identity');
     if (e.semanticId !== undefined) string(e.semanticId, 'semantic identity');
     if (e.showComponents !== undefined && typeof e.showComponents !== 'boolean') fail('component visibility must be true or false.');
@@ -85,6 +86,7 @@ export function parseDocument(text: string): DiagramDocument {
   }
   result.version = 3;
   if(d.version!==3)for(const physical of result.semantics.objects){physical.category ??= 'ordinary';}
+  synchronizeMotionPresentation(result);
   validateRelationships(result);
   repairContactNotation(result);
   validateRelationships(result);
@@ -138,7 +140,7 @@ export function validateRelationships(doc: DiagramDocument) {
   for (const c of doc.semantics.coordinateSystems) if (![1,2].includes(c.dimensions) || c.origin.length !== 2 || c.origin.some(v => !Number.isFinite(v)) || !Number.isFinite(c.angle) || (c.visible !== undefined && typeof c.visible !== 'boolean')) fail('invalid coordinate system.');
   for (const c of doc.semantics.coordinateSystems) for (const key of ['reverseX','reverseY'] as const) if (c[key] !== undefined && typeof c[key] !== 'boolean') fail('coordinate reversal must be boolean.');
   const coordinates = new Set(doc.semantics.coordinateSystems.map(c => c.id));
-  for(const v of doc.semantics.vectors){if(v.kind==='separation' && (!v.fromId || !v.toId || v.fromId===v.toId || !objects.has(v.fromId) || !objects.has(v.toId)))fail('invalid separation endpoints.');if(v.kind==='separation' && (variables.get(v.variableId)?.quantity!=='length'||variables.get(v.variableId)?.ownerVectorId!==v.id))fail('invalid separation magnitude.');const graphics=doc.presentation.elements.filter(g=>g.vectorId===v.id);if(graphics.length!==1 || !['arrow','dashedArrow'].includes(graphics[0].kind)||typeof graphics[0].visible!=='boolean')fail('missing vector configuration.');const g=graphics[0];if(g.points[0]!==0||g.points[1]!==0||g.rotation!==0||g.scaleX!==1||g.scaleY!==1)fail('invalid attached vector frame.');if((v.kind==='separation')!==(g.kind==='dashedArrow'))fail('vector arrow style does not match its semantic kind.');}
+  for(const v of doc.semantics.vectors){if(v.kind==='separation' && (!v.fromId || !v.toId || v.fromId===v.toId || !objects.has(v.fromId) || !objects.has(v.toId)))fail('invalid separation endpoints.');if(v.kind==='separation' && (variables.get(v.variableId)?.quantity!=='length'||variables.get(v.variableId)?.ownerVectorId!==v.id))fail('invalid separation magnitude.');const graphics=doc.presentation.elements.filter(g=>g.vectorId===v.id);if(graphics.length!==1 || graphics[0].kind!==(v.kind==='separation'?'dashedArrow':isZeroMotionVector(doc,v)?'text':'arrow')||typeof graphics[0].visible!=='boolean')fail('missing vector configuration.');const g=graphics[0];if(isZeroMotionVector(doc,v)&&g.points.some(n=>n!==0))fail('zero motion must have label-only geometry.');if(g.motionArrowPoints!==undefined){if(v.kind!=='motion'||g.kind!=='text'||!Array.isArray(g.motionArrowPoints)||g.motionArrowPoints.length!==4||g.motionArrowPoints.some(n=>typeof n!=='number'||!Number.isFinite(n)||Math.abs(n)>1000000)||g.motionArrowPoints[0]!==0||g.motionArrowPoints[1]!==0||Math.hypot(g.motionArrowPoints[2],g.motionArrowPoints[3])===0)fail('invalid dormant motion arrow geometry.');}if(g.points[0]!==0||g.points[1]!==0||g.rotation!==0||g.scaleX!==1||g.scaleY!==1)fail('invalid attached vector frame.');if((v.kind==='separation')!==(g.kind==='dashedArrow'))fail('vector arrow style does not match its semantic kind.');}
   for(const g of doc.presentation.elements)if(g.vectorId && (!vectors.has(g.vectorId)||g.semanticId))fail('invalid graphical vector reference.');
   for(const v of variables.values())if(Object.values(physicalConstants).some(c=>c.id===v.id || canonicalSymbol(c.symbol)===canonicalSymbol(v.symbol)))fail('reserved physical constant identity or symbol.');
   for (const i of doc.semantics.interactions) if (i.objectIds.some(id => !objects.has(id))) fail('interaction references a missing object.');

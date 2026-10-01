@@ -1,3 +1,15 @@
+# Zero-valued motion presentation
+
+Implementation based on deployed development revision 9fd677f96773d80cc2126c6fdbddc8989ac9affe. That preceding revision completed automatic run https://github.com/jchristophm/diagramed/actions/runs/36930540997 with 235 unit tests, build, 68 desktop/mobile browser tests, Pages deployment and 68 independent live acceptance tests all passing.
+
+Known-zero acceleration, velocity and displacement now have attached mathematical equality labels with their existing symbols and configured units. No arrow or endpoint control is rendered. Their persisted graphical records are label-only with zero endpoints, while dormant previous arrow points preserve configuration for returning to nonzero or unknown. Existing vector/variable/graphic IDs, ownership, labels, visibility, components and history are retained. Pre-fix zero arrows normalize only their motion presentation on import. Force/field behavior, Mathed and Notebook are unchanged.
+
+Local checkpoint: 246 unit tests and production build passed; six targeted desktop/mobile browser cases passed, covering each motion type, units, object movement, zero/nonzero/unknown transitions, save/reopen and Undo/Redo. Mobile screenshots were inspected. All 74 desktop/mobile browser regression cases passed against the compiled production build. The existing automatic push/deployment/live workflow provides the public verification gate. No dependency or physics definition was added. Physical touchscreen testing is separate.
+
+---
+
+## Previous history cycle (historical)
+
 # Final interface cleanup, Undo/Redo and data protection
 
 Implementation prepared on development, based on a94f5e9ce37e090ee836f2d96a25093ee481dbe5. Automatic deployment/live verification are pending; previous completed reports follow below.
