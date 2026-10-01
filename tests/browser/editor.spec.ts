@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './test-fixture';
 import { readFile } from 'node:fs/promises';
 export async function save(page: Page) {
   const pending=page.waitForEvent('download'); await page.getByTitle('Download JSON').click();

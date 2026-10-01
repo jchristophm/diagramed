@@ -1,3 +1,22 @@
+# Final interface cleanup, Undo/Redo and data protection
+
+Implementation prepared on development, based on a94f5e9ce37e090ee836f2d96a25093ee481dbe5. Automatic deployment/live verification are pending; previous completed reports follow below.
+
+- New-vector creation explicitly selects eligible Force and resets independently of editing. Existing semantic types and eligibility are retained.
+- Bottom toolbar: Grid, Undo, Redo, Open, Save. Matching monochrome SVG icons have visible labels underneath, pressed Grid state, disabled history states and 44-pixel touch targets. Permanent Delete is removed; keyboard, editing dialogs and management deletion remain available with existing dependency guards.
+- DocumentStore retains 100 completed document snapshots. Modal saves group multiple mutations; drag, endpoint, label, origin, rotation and transform start/end handlers group continuous changes. Pointer/touch cancellation or focus loss finalizes the last valid gesture state. Restored snapshots retain IDs, relationships, automatic notation and geometry; rendering derives fresh Konva nodes. Selection and dialogs are transient. New edits invalidate Redo; no-op edits do not create entries.
+- Saved-state comparison ignores timestamps, semantic record ordering and equivalent omitted defaults. Save initiation updates its baseline without clearing history. Invalid/canceled replacement leaves document, selection and history intact; successful loading resets history only after validation/preparation/rendering. beforeunload requests the browser's standard warning while dirty.
+
+Local verification: 235 unit tests and TypeScript/Vite build passed. All 16 new desktop/mobile-emulation cases passed, including actual multi-step canvas gestures, pointer cancellation, keyboard focus and shortcuts, modal edits/deletions, failed downloads, canceled/invalid imports and desktop beforeunload cancellation. The complete 68-case browser regression suite passed against the production build; desktop/mobile toolbar screenshots were inspected. The preexisting separation test now explicitly selects Separation so it retains all assertions while Force becomes the eligible default. No new dependency or file format was introduced; deployment workflow is unchanged.
+
+Limits: history is in memory, not autosave/recovery. Browser download initiation cannot verify permanent retention. Mobile browsers and OS/process termination may bypass beforeunload; actual physical touchscreen and tab/process termination behavior remain unverified. Existing dependency guards require removing relationships before deleting their objects; Undo restores the removed records with original IDs. Existing coordinate-derived component labels are noninteractive and have no persisted offsets; this cycle preserves their existing positioning, while existing draggable physical-vector/contact and object labels participate in history.
+
+Contract: docs/DEVELOPMENT_CONTRACT_6.md.
+
+---
+
+## Previous completed cleanup (historical)
+
 # Final coordinate and interface cleanup
 
 Completed and deployed 2026-10-01 UTC on development. Verified revision: 538872c2f6aedc17f2b091d431ec596960c2ead3, including implementation 460f42daa967f4a44675cdb24d91717a2c42dba2. Successful automatic verification/deployment/live-acceptance run: https://github.com/jchristophm/diagramed/actions/runs/36923439524 . Live application: https://jchristophm.github.io/diagramed/ . Historical reports below describe previous cycles.

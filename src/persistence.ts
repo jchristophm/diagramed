@@ -155,5 +155,5 @@ export function downloadDocument(document: DiagramDocument) {
   const url = URL.createObjectURL(blob);
   const link = window.document.createElement('a'); link.href = url;
   link.download = `${document.metadata.title.replace(/[^a-z0-9_-]+/gi, '-').slice(0, 80) || 'diagram'}.diagramed.json`;
-  link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  try { link.click(); } finally { setTimeout(() => URL.revokeObjectURL(url), 1000); }
 }

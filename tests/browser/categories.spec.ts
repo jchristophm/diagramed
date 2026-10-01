@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {test,expect} from './test-fixture';
 import {readFile} from 'node:fs/promises';
 test('specialized presets, point eligibility and category persistence',async({page})=>{
  await page.goto('./');

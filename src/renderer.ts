@@ -33,6 +33,12 @@ export class DiagramRenderer {
     this.controls.add(this.transformer);
     this.stage.on('click tap', e => { if (e.target === this.stage) this.select(null); });
     new ResizeObserver(() => this.fit()).observe(container);
+    const finishGesture=()=>{if(!this.store.inTransaction)return;this.stage.find('*').forEach(node=>{if(node.isDragging())node.stopDrag();});while(this.store.inTransaction)this.store.endTransaction();};
+    window.addEventListener('pointercancel',finishGesture);window.addEventListener('touchcancel',finishGesture);window.addEventListener('blur',finishGesture);
+  }
+  private historyGesture(node: Konva.Node, transform = false) {
+    node.on(transform?'dragstart.history transformstart.history':'dragstart.history',()=>this.store.beginTransaction());
+    node.on(transform?'dragend.history transformend.history':'dragend.history',()=>this.store.endTransaction());
   }
   private snap(v: number) { const size = this.store.document.presentation.grid.size; return Math.round(v / size) * size; }
   fit() {
@@ -93,7 +99,7 @@ export class DiagramRenderer {
       node.position({ x: patch.x, y: patch.y }); this.store.update(e.id, patch); this.positionLabel(e.id); this.refreshAttachments(); this.select(e.id);
     });
     node.on('transform', () => {this.positionLabel(e.id);this.refreshAttachments();});
-    this.layer.draw();
+    this.historyGesture(node,true);this.layer.draw();
   }
   private currentGraphic(id: string): Graphic {
     const e = this.element(id)!, node = this.nodes.get(id)!;
@@ -116,6 +122,7 @@ export class DiagramRenderer {
     group.on('click tap', () => this.select(e.id));
     group.on('dblclick dbltap', () => this.onEdit(this.element(e.id)!));
     group.on('dragend', () => { const current = this.element(e.id)!; const size=group.getClientRect({skipTransform:true}),anchor=labelPosition(this.currentGraphic(e.id),size.width,size.height,false,this.store.document.presentation.canvas); this.store.update(e.id, { label: { ...effectiveLabel(current)!, offsetX: group.x() - anchor.x, offsetY: group.y() - anchor.y } }); this.select(e.id); });
+    this.historyGesture(group);
   }
   private refreshAttachments(){
     const doc=structuredClone(this.store.document);for(const g of doc.presentation.elements)if(g.semanticId && this.nodes.has(g.id))Object.assign(g,this.currentGraphic(g.id));
@@ -160,7 +167,7 @@ export class DiagramRenderer {
           (node as Konva.Line).points(points); this.store.update(id, { points }); this.refreshAttachments(); this.stage.batchDraw();
         };
         handle.on('dragmove', () => move(handle)); hit.on('dragmove', () => move(hit));
-        this.controls.add(handle, hit);
+        this.historyGesture(handle);this.historyGesture(hit);this.controls.add(handle, hit);
       }
     } else if (e.kind === 'surface' || e.kind === 'point') { node.stroke('orange'); } else {
       if (e.kind !== 'text' && e.kind !== 'latex') node.stroke('orange');
@@ -191,7 +198,7 @@ export class DiagramRenderer {
     origin.draggable(true);
     origin.on('dragstart',()=>this.select(system.id));
     origin.on('dragmove',()=>{system.origin=[group.x()+origin.x(),group.y()+origin.y()];group.position({x:system.origin[0],y:system.origin[1]});origin.position({x:0,y:0});this.store.changed();this.select(system.id);});
-    this.coordinates.add(group);
+    this.historyGesture(origin);this.coordinates.add(group);
   }
   private coordinateHandles() {
     const system=this.store.document.semantics.coordinateSystems[0];if(!system || system.visible===false)return;
@@ -199,7 +206,7 @@ export class DiagramRenderer {
     const handle=new Konva.Circle({name:'coordinate-rotation-handle',x:system.origin[0]+basis.x[0]*distance,y:system.origin[1]+basis.x[1]*distance,radius:8,fill:'#ff0',stroke:'#42566b',hitStrokeWidth:24,draggable:true});
     handle.hitFunc((context,shape)=>{context.beginPath();context.arc(0,0,22/(this.stage.scaleX()||1),0,Math.PI*2);context.closePath();context.fillStrokeShape(shape);});
     handle.on('dragmove',()=>{const dx=handle.x()-system.origin[0],dy=handle.y()-system.origin[1];if(Math.hypot(dx,dy)<1)return;system.angle=Math.atan2(-dy,dx)*180/Math.PI;this.store.changed();this.renderCoordinates();void this.refreshComponents();this.stage.batchDraw();});
-    handle.on('dragend',()=>this.select(system.id));this.controls.add(handle);
+    handle.on('dragend',()=>this.select(system.id));this.historyGesture(handle);this.controls.add(handle);
   }
   private async refreshComponents() {
     const revision=++this.componentRevision;this.components.destroyChildren();

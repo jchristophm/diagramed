@@ -41,6 +41,7 @@ function openObject(id?: string) {
   $<HTMLSelectElement>('#object-representation').value = draft.representation;
   $<HTMLInputElement>('#show-name').checked = draft.showName;
   $<HTMLInputElement>('#show-properties').checked = draft.showProperties;
+  $('#delete-object').hidden=!id;
   $('#object-title').textContent = id ? 'Edit object' : 'Define object';
   $('#save-object').textContent = id ? 'Save object' : 'Create object';
   $('#object-error').textContent = '';
@@ -48,6 +49,7 @@ function openObject(id?: string) {
   refreshPropertyPreview();
   dialog.showModal();
 }
+$('#delete-object').addEventListener('click',async()=>{if(!editingId||busy)return;busy=true;try{deleteObject(store,editingId);await renderer.render();selectedObjectId=undefined;dialog.close();}catch(error){$('#object-error').textContent=(error as Error).message;}finally{busy=false;}});
 $('#cancel-object').addEventListener('click', () => dialog.close());
 $('#object-form').addEventListener('submit', async event => {
   event.preventDefault(); if (busy) return; busy = true;
@@ -104,7 +106,7 @@ async function removeSelected() {
   const selected=store.document.presentation.elements.find(e=>e.id===renderer.selectedId);if(selected?.vectorId){deleteVector(store,selected.vectorId);await renderer.render();return;}
   const id = selectedObject();
   if (id) { deleteObject(store, id); selectedObjectId = undefined; await renderer.render(); }
-  else renderer.deleteSelected();
+  else {renderer.deleteSelected();await renderer.render();}
 }
 async function action(name: string) {
   if (busy) return; status.textContent = '';
@@ -114,19 +116,40 @@ async function action(name: string) {
     else if (name === 'coordinates') coordinateUI.open();
     else if (name === 'edit') {const g=store.document.presentation.elements.find(e=>e.id===renderer.selectedId);if(g?.vectorId){vectorUI.open(g.vectorId);return;} const id = selectedObject(); if (id) openObject(id); else report('Select an object to edit its definition.'); }
     else if (name === 'grid') renderer.toggleGrid();
-    else if (name === 'delete') await removeSelected();
-    else if (name === 'download') downloadDocument(store.document);
+    else if (name === 'undo' || name === 'redo') {busy=true;try{if(name==='undo'?store.undo():store.redo()){selectedObjectId=undefined;await renderer.render();}}finally{busy=false;}}
+    else if (name === 'download') {downloadDocument(store.document);store.markSaved();}
     else if (name === 'open') $<HTMLInputElement>('#file-input').click();
   } catch (error) { report(error); }
 }
 document.querySelectorAll<HTMLButtonElement>('[data-action]').forEach(button => button.addEventListener('click', () => { $<HTMLDetailsElement>('#elements-menu').open=false; void action(button.dataset.action!); }));
-document.addEventListener('keydown', event => { if (event.key === 'Delete' && !document.querySelector('dialog[open]') && !(event.target instanceof HTMLInputElement) && !(event.target instanceof HTMLTextAreaElement)) void removeSelected().catch(report); });
-$<HTMLInputElement>('#file-input').addEventListener('change', async event => {
-  const chooser = event.target as HTMLInputElement, file = chooser.files?.[0]; if (!file || busy) return; busy = true;
-  const previous = structuredClone(store.document);
-  try { if (file.size > 10000000) throw new Error('Cannot open diagram: file exceeds the 10 MB limit.'); const candidate = parseDocument(await file.text()); await renderer.prepare(candidate); store.replace(candidate); await renderer.render(); selectedObjectId = undefined; status.textContent = `Opened ${file.name}`; }
-  catch (error) { store.replace(previous); await renderer.render().catch(() => {}); report(error); }
-  finally { busy = false; chooser.value = ''; }
+function editorOwnsKeyboard(event:KeyboardEvent) {
+ return event.defaultPrevented || !!document.querySelector('dialog[open]') || (event.target instanceof Element && !!event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"]),[role="textbox"]'));
+}
+document.addEventListener('keydown',event=>{
+ if(editorOwnsKeyboard(event)||busy||store.inTransaction)return;
+ const key=event.key.toLowerCase(),modifier=event.ctrlKey||event.metaKey;
+ if(modifier&&!event.altKey&&(key==='z'||(key==='y'&&event.ctrlKey))){
+  const redo=key==='y'||event.shiftKey;if(redo?store.canRedo:store.canUndo){event.preventDefault();void action(redo?'redo':'undo');}
+ }else if(event.key==='Delete'){event.preventDefault();void removeSelected().catch(report);}
+});
+function refreshDocumentControls(){
+ $<HTMLButtonElement>('[data-action="undo"]').disabled=!store.canUndo;
+ $<HTMLButtonElement>('[data-action="redo"]').disabled=!store.canRedo;
+ $('[data-action="grid"]').setAttribute('aria-pressed',String(store.document.presentation.grid.visible));
+ document.body.dataset.dirty=String(store.dirty);
+}
+store.subscribe(refreshDocumentControls);refreshDocumentControls();
+window.addEventListener('beforeunload',event=>{if(store.dirty){event.preventDefault();event.returnValue='';}});
+$<HTMLInputElement>('#file-input').addEventListener('change',async event=>{
+ const chooser=event.target as HTMLInputElement,file=chooser.files?.[0];if(!file||busy||store.inTransaction){chooser.value='';return;}busy=true;
+ const selection=renderer.selectedId;let replacing=false;
+ try{
+  if(file.size>10000000)throw new Error('Cannot open diagram: file exceeds the 10 MB limit.');
+  const candidate=parseDocument(await file.text());await renderer.prepare(candidate);
+  if(store.dirty&&!window.confirm('This diagram has unsaved changes. Open another file and discard them?'))return;
+  store.beginTransaction();replacing=true;store.replace(candidate);await renderer.render();store.resetHistory();replacing=false;selectedObjectId=undefined;status.textContent=`Opened ${file.name}`;
+ }catch(error){if(replacing){store.cancelTransaction();await renderer.render().catch(()=>{});renderer.select(selection);}report(error);}
+ finally{busy=false;chooser.value='';}
 });
 document.addEventListener('click',event=>{if(!$("#elements-menu").contains(event.target as Node))$<HTMLDetailsElement>('#elements-menu').open=false;});
 document.addEventListener('keydown',event=>{if(event.key==='Escape')$<HTMLDetailsElement>('#elements-menu').open=false;});

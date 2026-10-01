@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {test,expect} from './test-fixture';
 import {readFile} from 'node:fs/promises';
 async function saved(page:any){const pending=page.waitForEvent('download');await page.getByTitle('Download JSON').click();const file=await pending;return JSON.parse(await readFile((await file.path())!,'utf8'));}
 test('student authors weight expression and renamed symbols preserve structured references',async({page})=>{

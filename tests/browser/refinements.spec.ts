@@ -1,4 +1,4 @@
-import {test,expect,type Page} from '@playwright/test';
+import {test,expect,type Page} from './test-fixture';
 import {readFile} from 'node:fs/promises';
 async function save(page:Page){const pending=page.waitForEvent('download');await page.getByTitle('Download JSON').click();const file=await pending;return JSON.parse(await readFile((await file.path())!,'utf8'));}
 async function gesture(page:Page,mobile:boolean,start:{x:number;y:number},end:{x:number;y:number}){if(mobile){const cdp=await page.context().newCDPSession(page);await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[start]});for(let i=1;i<=8;i++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:start.x+(end.x-start.x)*i/8,y:start.y+(end.y-start.y)*i/8}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await cdp.detach();}else{await page.mouse.move(start.x,start.y);await page.mouse.down();await page.mouse.move(end.x,end.y,{steps:8});await page.mouse.up();}}

@@ -1,4 +1,4 @@
-import {test,expect,type Page} from '@playwright/test';
+import {test,expect,type Page} from './test-fixture';
 import {readFile} from 'node:fs/promises';
 import {DocumentStore,newDocument} from '../../src/model';
 import {saveObject,objectDraft} from '../../src/objects';

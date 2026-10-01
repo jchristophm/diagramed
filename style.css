@@ -129,3 +129,9 @@ fieldset { margin:12px 0; padding:0 12px 12px; border:1px solid #ddd; border-rad
   #elements-menu summary { padding-right:17px; }
   #elements-menu .toolbar-chevron { position:absolute; top:7px; right:2px; }
 }
+
+/* Bottom actions retain the top toolbar's icon language, with labels below. */
+#toolbar-bottom > button { flex-direction:column; width:auto; min-width:52px; height:44px; padding:2px 8px; gap:1px; font-size:12px; }
+#toolbar-bottom > button[aria-pressed="true"] { background:#dce8f2; border-color:#728da3; }
+[id^="toolbar"] button:disabled { opacity:.45; cursor:default; }
+@media(max-width:600px){#toolbar-bottom { gap:6px; padding:0 6px; } #toolbar-bottom > button { min-width:48px; padding:2px 6px; } #toolbar-bottom .toolbar-icon { width:18px; height:18px; }}

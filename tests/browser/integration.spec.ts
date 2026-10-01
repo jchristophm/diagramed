@@ -1,4 +1,4 @@
-import {test,expect,type Page} from '@playwright/test';
+import {test,expect,type Page} from './test-fixture';
 import {readFile} from 'node:fs/promises';
 async function saved(page:Page){const pending=page.waitForEvent('download');await page.getByTitle('Download JSON').click();const file=await pending;return JSON.parse(await readFile((await file.path())!,'utf8'));}
 async function load(page:Page,doc:any){await page.locator('#file-input').setInputFiles({name:'scenario.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(doc))});await expect(page.locator('#status')).toContainText('Opened');}
