@@ -34,7 +34,7 @@ async function gesture(page:Page, mobile:boolean, start:{x:number;y:number}, end
  if(mobile) {const cdp=await page.context().newCDPSession(page);await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[start]});for(let i=1;i<=6;i++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:start.x+(end.x-start.x)*i/6,y:start.y+(end.y-start.y)*i/6}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await cdp.detach();}
  else {await page.mouse.move(start.x,start.y);await page.mouse.down();await page.mouse.move(end.x,end.y,{steps:6});await page.mouse.up();}
 }
-test('required Rock Table Earth acceptance with movement resize and reload',async({page},info)=>{
+test('required Rock Table Planet Surface acceptance with movement resize and reload',async({page},info)=>{
  await page.goto('./');await page.getByTitle('Object',{exact:true}).click();await page.locator('#object-name').fill('Rock');await page.locator('#mass-enabled').check();await page.getByRole('button',{name:'Create object',exact:true}).click();await expect(page.locator('#object-dialog')).not.toBeVisible();
  const before=await save(page);const rockId=before.semantics.objects[0].id,variableId=before.semantics.variables[0].id;const rock=before.presentation.elements[0];
  const box=(await page.locator('.konvajs-content').boundingBox())!;const scale=box.width/before.presentation.canvas.width;
@@ -46,8 +46,8 @@ test('required Rock Table Earth acceptance with movement resize and reload',asyn
  const anchor={x:box.x+(table.x+table.width+4)*scale,y:box.y+(table.y+table.height/2)*scale};
  await gesture(page,info.project.name==='mobile',anchor,{x:anchor.x+100*scale,y:anchor.y});
  const resized=await save(page);expect(resized.presentation.elements[1].scaleX).toBeGreaterThan(2);expect(resized.presentation.elements[1].scaleY).toBeCloseTo(1);
- await page.getByTitle('Object',{exact:true}).click();await page.locator('#object-type').selectOption('planetSurface');await page.locator('#object-representation').selectOption('none');await page.getByRole('button',{name:'Create object',exact:true}).click();await expect(page.locator('#object-dialog')).not.toBeVisible();
- await page.locator('#elements-menu summary').click();await page.getByRole('button',{name:'Objects',exact:true}).click();for(const name of ['Rock','Table','Earth'])await expect(page.getByRole('button',{name:`Select ${name}`,exact:true})).toBeVisible();
+ await page.getByTitle('Object',{exact:true}).click();await page.locator('#object-type').selectOption('planetSurface');await page.locator('#object-name').fill('Planet Surface');await page.locator('#object-representation').selectOption('none');await page.getByRole('button',{name:'Create object',exact:true}).click();await expect(page.locator('#object-dialog')).not.toBeVisible();
+ await page.locator('#elements-menu summary').click();await page.getByRole('button',{name:'Objects',exact:true}).click();for(const name of ['Rock','Table','Planet Surface'])await expect(page.getByRole('button',{name:`Select ${name}`,exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Edit Rock',exact:true}).click();await page.locator('#mass-state').selectOption('known');await page.locator('#mass-value').fill('2.5');await page.getByRole('button',{name:'Save object',exact:true}).click();await expect(page.locator('#object-dialog')).not.toBeVisible();
  const complete=await save(page);expect(complete.semantics.variables.find((v:any)=>v.id===variableId)).toMatchObject({id:variableId,state:'known',value:2.5});expect(complete.presentation.elements[2].visible).toBe(false);
  await page.reload();await page.locator('#file-input').setInputFiles({name:'three-objects.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(complete))});await expect(page.locator('#status')).toContainText('Opened');expect(await save(page)).toEqual(complete);
