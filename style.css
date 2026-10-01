@@ -116,3 +116,16 @@ fieldset { margin:12px 0; padding:0 12px 12px; border:1px solid #ddd; border-rad
 #elements-menu > div { position:absolute; right:0; top:44px; width:190px; display:flex; flex-direction:column; gap:6px; padding:8px; border:1px solid #ccc; border-radius:6px; background:white; box-shadow:0 2px 6px #0002; }
 #elements-menu button { width:100%; min-height:44px; }
 @media(max-width:600px){#elements-menu summary{font-size:13px;padding:11px 8px}}
+
+/* Principal creation/management controls share lightweight outline icons. */
+.toolbar-icon { width:20px; height:20px; flex:none; pointer-events:none; }
+.toolbar-chevron { width:14px; height:14px; flex:none; pointer-events:none; }
+#toolbar-top > button, #elements-menu summary { min-height:44px; gap:6px; }
+#elements-menu summary { display:flex; align-items:center; justify-content:center; list-style:none; padding:8px 10px; }
+#elements-menu summary::-webkit-details-marker { display:none; }
+@media(max-width:600px){
+  #toolbar-top > button, #elements-menu summary { flex-direction:column; gap:1px; padding:2px 8px; font-size:12px; }
+  .toolbar-icon { width:18px; height:18px; }
+  #elements-menu summary { padding-right:17px; }
+  #elements-menu .toolbar-chevron { position:absolute; top:7px; right:2px; }
+}

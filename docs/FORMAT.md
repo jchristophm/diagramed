@@ -92,3 +92,12 @@ Vector graphics optionally persist `showComponents` (boolean, default true with 
 `COMPONENT_ANGLE_TOLERANCE_DEGREES` is a presentation-only internal constant, default 10. Let delta be the acute angle between the actual vector and the undirected rotated x axis (0..90 degrees). Graphical decomposition appears only if delta>10 and delta<80. In 2D both projections appear; in 1D only x appears. At either inclusive boundary all projection arrows and labels are suppressed. Nothing snaps, rotates or rounds authoritative vector data. Recalculation follows vector/frame rotation and live attached geometry.
 
 Missing frames do not introduce implicit axes or new graphics. The earlier application has semantic component records but no coordinate-projection renderer; its physical contact vectors retain their legacy behavior. Deleting a frame removes dependent semantic component records and graphical display settings, while preserving physical vectors and variables. Imports reject duplicate frames and malformed visibility. Version remains 3.
+
+
+## Independent axis directions (2026-10-01 cleanup)
+
+Coordinate-system records optionally include `reverseX` and `reverseY` boolean flags. Missing flags retain the historical unreversed convention; imports are not rewritten or migrated. No new format version. `angle` continues to rotate the reference axes. Each reversed positive basis vector is multiplied by -1 independently, preserving perpendicularity (including left-handed axis choices). The interactive rotation handle follows the reference x direction, independent of reversals.
+
+The graphical dot-product sign changes when its basis axis reverses; multiplying that signed projection by the reversed basis leaves its physical arrow geometry unchanged. Internal `direction` metadata records only positive/negative graphical coordinate direction, never a numerical physical magnitude. Absolute angular separations and the inclusive 10° threshold are invariant under reversals. In 1D only x appears; reverseY remains stored for restoration in 2D.
+
+New Planet Surface presets initialize visible Earth with g=9.8 m/s². Loading/editing existing planets preserves their names, gravity, visibility and graphical configuration. Default changes perform no migration or naming-system replacement.

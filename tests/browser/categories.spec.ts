@@ -2,7 +2,7 @@ import {test,expect} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
 test('specialized presets, point eligibility and category persistence',async({page})=>{
  await page.goto('./');
- for(const [category,name] of [['planetSurface','Planet Surface'],['spatialPoint','Spatial point'],['spring','Spring'],['cable','String/Cable'],['chargedPlate','Charged Plate'],['fluid','Water']]){
+ for(const [category,name] of [['planetSurface','Earth'],['spatialPoint','Spatial point'],['spring','Spring'],['cable','String/Cable'],['chargedPlate','Charged Plate'],['fluid','Water']]){
   await page.getByTitle('Object',{exact:true}).click();await page.locator('#object-type').selectOption(category);await expect(page.locator('#object-name')).toHaveValue(name);
   if(category==='spatialPoint'){await expect(page.locator('#mass-enabled')).toHaveCount(0);await expect(page.locator('#density-enabled')).toHaveCount(0);}
   await page.getByRole('button',{name:'Create object',exact:true}).click();await expect(page.locator('#object-dialog')).not.toBeVisible();

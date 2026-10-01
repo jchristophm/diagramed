@@ -1,3 +1,21 @@
+# Final coordinate and interface cleanup
+
+Implementation prepared 2026-10-01 UTC on development, based on 6cd949a8a5717544e0f1042f6d76c8d731525e1b. Deployment and live acceptance are pending the automatic push workflow; the historical reports below describe previous cycles.
+
+- Independent optional reverseX/reverseY booleans reuse the coordinate record and existing configuration dialog. Rotation remains the reference angle; the handle retains its independent reference direction. Flips preserve the origin, perpendicular axes, physical vector geometry, identities and naming. Hidden y reversal persists in 1D and restores in 2D.
+- Derived graphical projections respect signed axis conventions, while the existing inclusive 10-degree suppression remains unchanged for rotated/reversed frames and 1D. No numerical physical quantities or semantic component calculations were added.
+- Four monochrome inline SVG toolbar icons retain text labels, disabled states, existing dialogs, keyboard access and 44-pixel touch targets.
+- New Planet Surface objects default to visible Earth with g=9.8. Existing saved names, properties and hidden representations are retained. Vector Type options now read Force, Field, Separation, Acceleration, Velocity, Displacement with unchanged eligibility.
+- Native JSON remains version 3. Missing reversal flags retain previous directions. No dependency, framework, new physics type or deployment system was added.
+
+Local verification: 223 unit tests passed; TypeScript and Vite production build passed with the existing bundle-size advisory. Focused tests cover reversal combinations, rotated geometry, inclusive tolerance boundaries, persistence/legacy files, duplicate Weight BY/ON naming, defaults, toolbar behavior and menu order. The browser suite contains 52 desktop/mobile cases. Local Chromium launch is blocked by this workspace's socket restrictions; required compiled-build browser checks and independent live acceptance run on the existing GitHub Actions runners before completion is reported. Physical touchscreen testing remains separate.
+
+Contract: docs/DEVELOPMENT_CONTRACT_5.md. The existing automatic development verification → Pages deployment → live acceptance workflow is unchanged.
+
+---
+
+## Previous coordinate cycle (historical)
+
 # Coordinate systems and interface consolidation complete
 
 Verified 2026-10-01 UTC on the existing development branch, based on 88cdf849c1d632fab195061def83e455721fc430. This implementation is not publicly deployed.

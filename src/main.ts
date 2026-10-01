@@ -59,7 +59,7 @@ $('#object-form').addEventListener('submit', async event => {
 function applyType(category:ObjectCategory){
  const currentName=$<HTMLInputElement>('#object-name').value;
  let previous:ReturnType<typeof readPropertyFields>={};try{previous=readPropertyFields($('#property-fields'));}catch{/* Incomplete draft fields must not prevent changing type. */}
- const customName=currentName.trim() && !Object.values(categoryNames).includes(currentName) && currentName!=='Water';
+ const customName=currentName.trim() && !Object.values(categoryNames).includes(currentName) && !['Water','Earth'].includes(currentName);
  const draft=presetDraft(category);configureCategory(category);
  $<HTMLInputElement>('#object-name').value=customName?currentName:category==='ordinary'?'':draft.name;
  $<HTMLSelectElement>('#object-representation').value=draft.representation;

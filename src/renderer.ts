@@ -176,7 +176,7 @@ export class DiagramRenderer {
     const system = this.store.document.semantics.coordinateSystems[0];
     if (!system || system.visible === false) return;
     const group = new Konva.Group({name:'coordinate-system',id:system.id,x:system.origin[0],y:system.origin[1]});
-    const basis = coordinateBasis(system.angle);
+    const basis = coordinateBasis(system.angle, system.reverseX, system.reverseY);
     for (const axis of system.dimensions === 2 ? ['x','y'] as const : ['x'] as const) {
       const [dx,dy]=basis[axis];
       const arrow=new Konva.Arrow({name:'coordinate-axis',axis,points:[-dx*16,-dy*16,dx*64,dy*64],stroke:'#42566b',fill:'#42566b',strokeWidth:2,pointerLength:8,pointerWidth:8,hitStrokeWidth:18});
@@ -212,7 +212,7 @@ export class DiagramRenderer {
     const group=new Konva.Group({name:'vector-components',vectorId:vector.id});
     for(const projection of projections){
       const x=graphic.x,y=graphic.y;
-      group.add(new Konva.Arrow({name:'vector-component',axis:projection.axis,points:[x,y,x+projection.dx,y+projection.dy],stroke:record.stroke,fill:record.stroke,strokeWidth:2,dash:[2,5],pointerLength:7,pointerWidth:7}));
+      group.add(new Konva.Arrow({name:'vector-component',axis:projection.axis,coordinateDirection:projection.direction,points:[x,y,x+projection.dx,y+projection.dy],stroke:record.stroke,fill:record.stroke,strokeWidth:2,dash:[2,5],pointerLength:7,pointerWidth:7}));
       // Append the coordinate axis to the existing participant subscripts.
       const indexed=symbol.endsWith('}')?symbol.slice(0,-1)+','+projection.axis+'}':symbol+'_{'+projection.axis+'}';
       const latex=vectorLatex(indexed),image=await renderMath(latex,16);

@@ -6,7 +6,7 @@ export interface Variable { expression?: Expression; ownerInteractionId?: string
 export type ObjectCategory = 'ordinary' | 'spatialPoint' | 'planetSurface' | 'spring' | 'cable' | 'chargedPlate' | 'fluid';
 export interface PhysicalObject { category?: ObjectCategory; abbreviation?: string; abbreviationName?: string; polarity?: 'positive' | 'negative'; id: string; name: string; properties?: Record<string, string> }
 export interface Interaction { id: string; objectIds: string[]; kind: string; sourceId?: string; targetId?: string; model?: 'nearSurface'|'universal'|'pointSource'|'uniform'|'ordinary'|'spring'|'cable'; separationId?: string; properties?: Record<string,string>; friction?: 'static'|'kinetic'; resultantVisible?: boolean }
-export interface CoordinateSystem { id: string; dimensions: 1 | 2; origin: [number, number]; angle: number; visible?: boolean }
+export interface CoordinateSystem { id: string; dimensions: 1 | 2; origin: [number, number]; angle: number; visible?: boolean; reverseX?: boolean; reverseY?: boolean }
 export interface PhysicalVector { id: string; kind: 'force' | 'field' | 'motion' | 'separation'; fromId?: string; toId?: string; sourceId?: string; separationId?: string; fieldType?: 'gravitational'|'electric'; motionType?: 'velocity'|'acceleration'|'displacement'; role?: 'normal'|'friction'|'resultant'; variableId: string; objectId?: string; interactionId?: string }
 export interface VectorComponent { id: string; vectorId: string; coordinateSystemId: string; axis: 'x' | 'y'; variableId: string }
 export interface Semantics {
