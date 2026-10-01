@@ -110,3 +110,9 @@ fieldset { margin:12px 0; padding:0 12px 12px; border:1px solid #ddd; border-rad
 .expression-palette{display:flex;flex-wrap:wrap;gap:5px}.expression-palette button{min-width:36px;min-height:36px}.expression-preview{padding:12px;min-height:36px;overflow-x:auto}.expression-error{color:#a22}
 #vector-list .object-row{grid-template-columns:repeat(2,minmax(0,1fr))}#vector-list button{overflow-wrap:anywhere;min-width:0}.expression-palette input{max-width:140px}button:disabled{cursor:default;opacity:.45}
 @media(max-width:600px){#toolbar-top{gap:4px;padding:0 6px}#toolbar-top button{padding:4px 8px;font-size:13px}#selected-name{display:none}}
+
+#elements-menu { position:relative; font-size:14px; }
+#elements-menu summary { box-sizing:border-box; min-height:40px; cursor:pointer; padding:11px 10px; background:#f5f5f5; border:1px solid #ccc; border-radius:6px; }
+#elements-menu > div { position:absolute; right:0; top:44px; width:190px; display:flex; flex-direction:column; gap:6px; padding:8px; border:1px solid #ccc; border-radius:6px; background:white; box-shadow:0 2px 6px #0002; }
+#elements-menu button { width:100%; min-height:44px; }
+@media(max-width:600px){#elements-menu summary{font-size:13px;padding:11px 8px}}

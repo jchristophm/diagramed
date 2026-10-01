@@ -1,4 +1,5 @@
 import Konva from 'konva';
+import { coordinateBasis, graphicalComponents, deleteCoordinates } from './coordinates';
 import { DocumentStore, type DiagramDocument, type Graphic } from './model';
 import { renderMath } from './math';
 import { displayedVector } from './physics';
@@ -9,6 +10,11 @@ export class DiagramRenderer {
   private grid = new Konva.Layer({ listening: false });
   private layer = new Konva.Layer();
   private controls = new Konva.Layer();
+  private coordinates = new Konva.Layer();
+  private components = new Konva.Layer({listening:false});
+  private componentRevision = 0;
+  private activeVectorId: string | null = null;
+  onCoordinateEdit: () => void = () => {};
   private origins = new Konva.Layer({listening:false});
   private transformer = new Konva.Transformer({ rotateEnabled: true, ignoreStroke: true, padding: 4, anchorSize: 12 });
   private nodes = new Map<string, Konva.Shape>();
@@ -23,7 +29,7 @@ export class DiagramRenderer {
   }
   constructor(private store: DocumentStore, private container: HTMLDivElement) {
     this.stage = new Konva.Stage({ container, width: 800, height: 600 });
-    this.stage.add(this.grid, this.layer, this.origins, this.controls);
+    this.stage.add(this.grid, this.layer, this.components, this.coordinates, this.origins, this.controls);
     this.controls.add(this.transformer);
     this.stage.on('click tap', e => { if (e.target === this.stage) this.select(null); });
     new ResizeObserver(() => this.fit()).observe(container);
@@ -40,6 +46,7 @@ export class DiagramRenderer {
     await Promise.all(doc.presentation.elements.filter(e => (e.semanticId || e.vectorId) && e.visible !== false && e.label?.showProperties && this.symbols(e, doc)).map(e => renderMath(this.symbols(e, doc), 16)));
   }
   async render() {
+    const previousActiveVector=this.activeVectorId;
     await this.prepare(this.store.document);
     this.select(null); this.layer.destroyChildren(); this.nodes.clear(); this.labels.clear(); this.grid.destroyChildren();
     const { canvas, grid, elements } = this.store.document.presentation;
@@ -47,7 +54,9 @@ export class DiagramRenderer {
     for (let y = 0; y < canvas.height; y += grid.size) this.grid.add(new Konva.Line({ points: [0, y, canvas.width, y], stroke: '#eee', strokeWidth: 1 }));
     this.grid.visible(grid.visible);
     for (const e of [...elements.filter(e=>e.kind==='surface'),...elements.filter(e=>e.kind!=='surface')]) await this.addNode(e);
-    this.refreshOrigins(this.store.document);this.fit(); this.stage.draw();
+    this.renderCoordinates();this.refreshOrigins(this.store.document);this.fit();
+    if(previousActiveVector && this.nodes.has(previousActiveVector)){this.activeVectorId=previousActiveVector;await this.refreshComponents();}
+    this.stage.draw();
   }
   async addNode(record: Graphic) {
     let e=record; if(e.vectorId){const v=this.store.document.semantics.vectors.find(v=>v.id===e.vectorId);if(!v)return;const shown=displayedVector(this.store.document,v,e);if(!shown)return;e=shown;}
@@ -111,7 +120,7 @@ export class DiagramRenderer {
   private refreshAttachments(){
     const doc=structuredClone(this.store.document);for(const g of doc.presentation.elements)if(g.semanticId && this.nodes.has(g.id))Object.assign(g,this.currentGraphic(g.id));
     for(const g of doc.presentation.elements){if(!g.vectorId)continue;const v=doc.semantics.vectors.find(v=>v.id===g.vectorId),node=this.nodes.get(g.id);if(!v||!node)continue;const current=displayedVector(doc,v,g);if(!current)continue;node.position({x:current.x,y:current.y});(node as Konva.Line).points(current.points);this.positionLabel(g.id);}
-    this.refreshOrigins(doc);
+    this.refreshOrigins(doc); void this.refreshComponents();
   }
   private refreshOrigins(doc:DiagramDocument){
     this.origins.destroyChildren();const counts=new Map<string,number>();
@@ -125,8 +134,13 @@ export class DiagramRenderer {
     if (old) { const e = this.element(this.selectedId!); if (e && !['text', 'latex'].includes(e.kind)) old.stroke(e.stroke); old.draggable(!e?.vectorId); }
     this.controls.destroyChildren(); this.transformer = new Konva.Transformer({ rotateEnabled: true, ignoreStroke: true, padding: 4, anchorSize: 12 }); this.controls.add(this.transformer);
     this.selectedId = id;
+    const selectedVector = id && this.element(id)?.vectorId;
+    if (selectedVector) this.activeVectorId = id;
+    else if (!id || !this.store.document.semantics.coordinateSystems.some(c => c.id === id)) this.activeVectorId = null;
+    void this.refreshComponents();
     this.onSelect(id ? this.element(id) || null : null);
     if (!id) { this.stage.batchDraw(); return; }
+    if (this.store.document.semantics.coordinateSystems.some(c => c.id === id)) { this.coordinateHandles(); this.stage.batchDraw(); return; }
     const e = this.element(id), node = this.nodes.get(id);
     if (!e || !node) return;
     if (['line', 'arrow', 'dashedArrow','spring','cable'].includes(e.kind)) {
@@ -156,6 +170,56 @@ export class DiagramRenderer {
     }
     this.stage.batchDraw();
   }
-  deleteSelected() { if (this.selectedId) { const id = this.selectedId; if (this.element(id)?.semanticId || this.element(id)?.vectorId) throw new Error('Semantic objects must be deleted through the object operations.'); this.select(null); this.nodes.get(id)?.destroy(); this.labels.get(id)?.destroy(); this.nodes.delete(id); this.labels.delete(id); this.store.remove(id); this.stage.draw(); } }
+  deleteSelected() { if (this.selectedId && this.store.document.semantics.coordinateSystems.some(c=>c.id===this.selectedId)) { deleteCoordinates(this.store); this.select(null); this.coordinates.destroyChildren(); this.stage.draw(); return; } if (this.selectedId) { const id = this.selectedId; if (this.element(id)?.semanticId || this.element(id)?.vectorId) throw new Error('Semantic objects must be deleted through the object operations.'); this.select(null); this.nodes.get(id)?.destroy(); this.labels.get(id)?.destroy(); this.nodes.delete(id); this.labels.delete(id); this.store.remove(id); this.stage.draw(); } }
+  private renderCoordinates() {
+    this.coordinates.destroyChildren();
+    const system = this.store.document.semantics.coordinateSystems[0];
+    if (!system || system.visible === false) return;
+    const group = new Konva.Group({name:'coordinate-system',id:system.id,x:system.origin[0],y:system.origin[1]});
+    const basis = coordinateBasis(system.angle);
+    for (const axis of system.dimensions === 2 ? ['x','y'] as const : ['x'] as const) {
+      const [dx,dy]=basis[axis];
+      const arrow=new Konva.Arrow({name:'coordinate-axis',axis,points:[-dx*16,-dy*16,dx*64,dy*64],stroke:'#42566b',fill:'#42566b',strokeWidth:2,pointerLength:8,pointerWidth:8,hitStrokeWidth:18});
+      const label=new Konva.Text({text:axis,x:dx*78-5,y:dy*78-8,fontSize:16,fill:'#42566b'});
+      group.add(arrow,label);
+    }
+    const origin=new Konva.Circle({name:'coordinate-origin',radius:5,fill:'#42566b',hitStrokeWidth:0});
+    origin.hitFunc((context,shape)=>{context.beginPath();context.arc(0,0,22/(this.stage.scaleX()||1),0,Math.PI*2);context.closePath();context.fillStrokeShape(shape);});group.add(origin);
+    group.on('click tap',()=>this.select(system.id));
+    group.on('dblclick dbltap',()=>this.onCoordinateEdit());
+    // Only the origin drags the frame; vector/object nodes are independent.
+    origin.draggable(true);
+    origin.on('dragstart',()=>this.select(system.id));
+    origin.on('dragmove',()=>{system.origin=[group.x()+origin.x(),group.y()+origin.y()];group.position({x:system.origin[0],y:system.origin[1]});origin.position({x:0,y:0});this.store.changed();this.select(system.id);});
+    this.coordinates.add(group);
+  }
+  private coordinateHandles() {
+    const system=this.store.document.semantics.coordinateSystems[0];if(!system || system.visible===false)return;
+    const basis=coordinateBasis(system.angle),distance=105;
+    const handle=new Konva.Circle({name:'coordinate-rotation-handle',x:system.origin[0]+basis.x[0]*distance,y:system.origin[1]+basis.x[1]*distance,radius:8,fill:'#ff0',stroke:'#42566b',hitStrokeWidth:24,draggable:true});
+    handle.hitFunc((context,shape)=>{context.beginPath();context.arc(0,0,22/(this.stage.scaleX()||1),0,Math.PI*2);context.closePath();context.fillStrokeShape(shape);});
+    handle.on('dragmove',()=>{const dx=handle.x()-system.origin[0],dy=handle.y()-system.origin[1];if(Math.hypot(dx,dy)<1)return;system.angle=Math.atan2(-dy,dx)*180/Math.PI;this.store.changed();this.renderCoordinates();void this.refreshComponents();this.stage.batchDraw();});
+    handle.on('dragend',()=>this.select(system.id));this.controls.add(handle);
+  }
+  private async refreshComponents() {
+    const revision=++this.componentRevision;this.components.destroyChildren();
+    const id=this.activeVectorId,system=this.store.document.semantics.coordinateSystems[0];
+    const record=id?this.element(id):undefined;
+    if(!record?.vectorId || !system || record.showComponents===false || record.visible===false || !this.nodes.has(record.id)) {this.components.batchDraw();return;}
+    const graphic=this.currentGraphic(record.id),projections=graphicalComponents(graphic,system);
+    const vector=this.store.document.semantics.vectors.find(v=>v.id===record.vectorId)!;
+    const symbol=this.store.document.semantics.variables.find(v=>v.id===vector.variableId)?.symbol || '';
+    const group=new Konva.Group({name:'vector-components',vectorId:vector.id});
+    for(const projection of projections){
+      const x=graphic.x,y=graphic.y;
+      group.add(new Konva.Arrow({name:'vector-component',axis:projection.axis,points:[x,y,x+projection.dx,y+projection.dy],stroke:record.stroke,fill:record.stroke,strokeWidth:2,dash:[2,5],pointerLength:7,pointerWidth:7}));
+      // Append the coordinate axis to the existing participant subscripts.
+      const indexed=symbol.endsWith('}')?symbol.slice(0,-1)+','+projection.axis+'}':symbol+'_{'+projection.axis+'}';
+      const latex=vectorLatex(indexed),image=await renderMath(latex,16);
+      group.add(new Konva.Image({name:'component-label',axis:projection.axis,math:latex,image,width:image.width/2,height:image.height/2,x:x+projection.dx+8,y:y+projection.dy+8}));
+    }
+    if(revision!==this.componentRevision){group.destroy();return;}
+    this.components.add(group);this.components.batchDraw();
+  }
   toggleGrid() { const p = this.store.document.presentation; p.grid.visible = !p.grid.visible; this.grid.visible(p.grid.visible); this.store.changed(); this.stage.draw(); }
 }

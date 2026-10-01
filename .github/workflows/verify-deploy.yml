@@ -29,11 +29,11 @@ jobs:
           name: browser-test-results
           path: test-results/
       - uses: actions/upload-pages-artifact@v3
-        if: github.event_name != 'pull_request'
+        if: github.event_name == 'workflow_dispatch'
         with:
           path: dist
   deploy:
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'workflow_dispatch'
     needs: verify
     runs-on: ubuntu-latest
     permissions:
@@ -47,7 +47,7 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
   live-acceptance:
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'workflow_dispatch'
     needs: deploy
     runs-on: ubuntu-latest
     steps:

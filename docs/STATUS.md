@@ -1,3 +1,40 @@
+# Coordinate systems and interface consolidation complete
+
+Verified 2026-10-01 UTC on the existing development branch, based on 88cdf849c1d632fab195061def83e455721fc430. This implementation is not publicly deployed.
+
+## Delivered
+
+- One persistent independent 1D/2D frame with center creation, origin dragging, free handle rotation, numerical counterclockwise angles, perpendicular axes, dimensionality changes, visibility and deletion. Origin/rotation hit targets stay 44 screen pixels across canvas scaling.
+- Dotted graphical coordinate projections of the active vector, including signed directions and existing participant notation with x/y subscripts. The active vector remains active while the frame is manipulated. Its parent arrow and label remain present. Optional component visibility persists in graphical configuration.
+- One presentation-only 10-degree constant. Both positive/negative directions and rotated frames use the inclusive boundary; 2D decomposition is absent near either axis. 1D suppresses near-parallel redundancy and near-perpendicular insignificant x projections. Live vector/frame gestures update display without enforcing angular snapping or changing physical quantities.
+- Object | Vector | Coordinates | Elements toolbar. Elements launches existing object/vector management modals and coordinate configuration. Double-click/double-tap and modal editing remain available.
+- Unified Object type selector, existing specialized defaults, contextual properties/representations during creation/editing, retained shared valid draft values and custom names. Existing code had no named Book/Rock preset entries; ordinary objects retain those custom names. Type-selection discovery retains disabled vector choices and the unavailable Vector button.
+- Version-3 persistence extensions remain optional. No axes are inserted into older diagrams. Duplicate axes and malformed flags are rejected.
+- Development pushes/PRs continue verification. Public deployment now requires explicit workflow dispatch, satisfying the contract's no-public-release requirement.
+
+## Architecture and compatibility
+
+Reused DocumentStore, CoordinateSystem semantic records, Konva renderer, physical attachment geometry, mathematical image renderer, naming conventions, object/category property eligibility, specialized object defaults, vector eligibility, and the existing management modals. No new dependency or rendering framework.
+
+Inspection found reserved semantic component records but no existing coordinate-projection graphics. Added one derived graphical projection path; existing normal/friction/resultant contact vectors remain separate physical definitions with their established behavior. No implicit screen-axis projection is added for legacy documents. Hidden coordinates retain their semantic frame and projections; deleting coordinates removes dependent component records/settings while preserving physical objects, vectors and variables.
+
+Graphical projections do not create numerical values, equations, derived physical magnitudes or semantic variables. Mathed, tutoring, assessment and export are excluded.
+
+## Verification
+
+- 196 unit tests passed, including 134 coordinate/tolerance regression cases, signed geometry, frame rotation, origin invariance, zero vectors, persistence, singleton constraints, legacy documents and deletion.
+- TypeScript checks and Vite production build passed. The existing large-bundle advisory remains.
+- All 46 browser tests passed against compiled assets: desktop Chromium and Pixel 7 mobile emulation. Existing physics, labels, expressions, JSON, legacy imports, object/vector gestures and management flows passed alongside the new coordinate/dialog cases.
+- The six new coordinate/dialog browser cases were rerun successfully after enlarging touch targets and adding vector-tip gestures crossing the angular threshold. They cover coordinate origin/handle gestures, exact-angle boundary changes, 1D projections, component visibility, hide/show, deletion and save/reopen without changing physical geometry during frame operations.
+- Inspected desktop/mobile screenshots of the coordinate axes, dotted components and consolidated toolbar.
+- No manual human/device interaction, actual hardware touchscreen test or deployed-site verification was performed for this cycle. Automated gestures ran in a real local Chromium browser with emulated touch input.
+
+The contract and amendment are preserved in docs/DEVELOPMENT_CONTRACT_4.md; conventions and additions are documented in README.md and docs/FORMAT.md. No main/original files changed. No public release, Mathed integration, new physics definitions or application-wide redesign.
+
+---
+
+## Previous verified cycle (historical)
+
 # Development Contract 3.1 complete
 
 Verified 2026-09-30 UTC. Working branch: development. Live application: https://jchristophm.github.io/diagramed/ .

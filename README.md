@@ -4,7 +4,7 @@ A semantic physics diagram editor. Live development application: https://jchrist
 
 ## Using the editor
 
-**Object** opens a confirmed physical definition. Ordinary objects have circle, rectangle, point or hidden representations and optional mass, charge and density. Category is independent of name. Presets include Spatial point (optional charge), Planet Surface (hidden, g=9.8 m/s²), Spring (optional k and extension), String/Cable, Charged Plate (polarity and optional surface charge density), and Fluid (Water, density=1000 kg/m³). Defaults still obey symbol collision checks. No placement creates forces or fields automatically.
+**Object** opens a confirmed physical definition. Ordinary objects have circle, rectangle, point or hidden representations and optional mass, charge and density. A single Object type selector determines valid properties and representations; custom names remain independent. Specialized defaults include Spatial point (optional charge), Planet Surface (hidden, g=9.8 m/s²), Spring (optional k and extension), String/Cable, Charged Plate (polarity and optional surface charge density), and Fluid (Water, density=1000 kg/m³). Defaults still obey symbol collision checks. No placement creates forces or fields automatically.
 
 Ground, plate and fluid span the logical canvas and anchor to its bottom. Drag their upper boundary to adjust the surface. Fluid is translucent and behind ordinary objects; its interior does not intercept object gestures. Springs and cables have independently adjustable endpoints. These graphical operations never change physical properties. Ordinary rectangles resize independently horizontally and vertically. Points retain enlarged hit targets.
 
@@ -33,7 +33,7 @@ There is no autosave, undo or unsaved-change prompt. Download before leaving the
 ## Architecture
 
 - `model.ts`: authoritative document store and independent graphical identities.
-- `semantics.ts`: objects/categories, variables, interactions, vectors, expressions and reserved coordinate/component types.
+- `semantics.ts`: objects/categories, variables, interactions, vectors, expressions and one explicit coordinate system and retained semantic component records.
 - `objects.ts`: atomic object commands, presets, property eligibility and safe deletion.
 - `physics.ts`: interaction/vector commands, quantity units, separation and derived attached presentation.
 - `geometry.ts`: central attachment coordinates independent of Konva.
@@ -45,13 +45,19 @@ There is no autosave, undo or unsaved-change prompt. Download before leaving the
 - `property-form.ts`, `vector-ui.ts`, `expression-ui.ts`, `main.ts`: draft dialogs, collections and document operations.
 - `persistence.ts`: v1/v2 migration and whole-document validation before replacement.
 
-Future coordinate systems and components should reference vector/variable IDs and use stored graphical directions with explicitly defined physical magnitudes. Extend the reserved coordinate/component records and eligibility/quantity units, without inferring distance from pixels. Mathed can consume expression ASTs and registry IDs. No coordinate components, algebra, assessment, AI tutor, authentication, server storage or image export are implemented.
+**Coordinates** creates or edits one independent 1D/2D frame. Drag its origin; select its axes to use the rotation handle, or enter a numerical angle in the modal. Positive angles rotate counterclockwise. Origin, dimensions, angle and visibility persist. Hiding axes retains the frame; deleting it removes coordinate-dependent displays without deleting physical elements.
+
+Only the active vector displays dotted coordinate projections, with x/y appended to its existing participant subscripts. They remain visible while manipulating the frame. Show coordinate components in the vector editor controls presentation only. The single internal `COMPONENT_ANGLE_TOLERANCE_DEGREES` defaults to 10°. Within 10° inclusive of either undirected rotated axis, graphical decomposition is entirely suppressed. In 1D, projections are suppressed near parallel or perpendicular alignment; otherwise only x appears. Actual vector geometry, magnitudes, variables and relationships remain unchanged. No pixel length becomes a physical quantity.
+
+The toolbar is Object | Vector | Coordinates | Elements. Elements launches the existing Objects and Vectors managers or coordinate configuration. Double-click/double-tap editing remains available. Creation and editing dialogs omit inapplicable properties/representations; applicable unchecked properties remain available. Unavailable vector types remain disabled for discovery.
+
+Files without explicit axes retain their prior appearance and acquire no coordinate definition. Earlier code had no coordinate-decomposition renderer; linked normal/friction/resultant forces retain their existing rendering. Mathed integration, algebra, assessment, AI tutor, authentication, server storage and image export remain separate work.
 
 ## Verification and deployment
 
 Run `npm ci`, `npm test`, `npm run build`, `npx playwright install --with-deps chromium`, `npm run test:browser`. Browser tests use compiled production assets through local Vite preview. `TEST_URL=https://jchristophm.github.io/diagramed/ npm run test:browser` tests the deployed app independently.
 
-GitHub Actions verifies development pushes/PRs, deploys development after verification, then uses a separate runner to repeat desktop/mobile acceptance against the live URL. Local Chromium launches are currently prohibited by the cloud workspace socket restriction; GitHub runners perform browser checks. Real touchscreen testing remains the user's responsibility. PR previews are not configured.
+GitHub Actions verifies development pushes/PRs. Deployment and independent live acceptance require an explicit workflow dispatch; development pushes do not publish. Local Chromium desktop and mobile-emulation tests run against the compiled assets. Real touchscreen testing remains the user's responsibility. PR previews are not configured.
 
 `examples/scenario-A` through `scenario-F` contain representative student-authored models/expressions. They are example documents, not UI equation templates. `representative.diagramed.json` and `version2.diagramed.json` remain genuine legacy fixtures. See docs/FORMAT.md, docs/STATUS.md and the historical development contracts and Contract 3.1 refinements.
 

@@ -7,6 +7,7 @@ export interface Graphic {
   stroke: string; fill: string; strokeWidth: number;
   text: string; latex: string; fontSize: number; fontFamily: string;
   visible?: boolean;
+  showComponents?: boolean;
   label?: { placement?: 'objectCenter'|'vectorTip'; showName: boolean; showProperties: boolean; offsetX: number; offsetY: number };
 }
 export interface DiagramDocument {

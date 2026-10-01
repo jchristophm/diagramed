@@ -1,3 +1,4 @@
+import {initializeCoordinates} from './coordinate-ui';
 import {initializeVectors} from './vector-ui';
 import {deleteVector} from './physics';
 import katex from 'katex';
@@ -5,17 +6,25 @@ import { showPropertyFields, readPropertyFields, refreshPropertySymbols } from '
 import { DocumentStore, newDocument, type Graphic } from './model';
 import { DiagramRenderer } from './renderer';
 import { parseDocument, downloadDocument } from './persistence';
-import { saveObject, deleteObject, objectDraft, objectGraphic, setObjectVisibility, objectPresets, categoryNames, presetDraft, type Representation } from './objects';
+import { saveObject, deleteObject, objectDraft, objectGraphic, setObjectVisibility, categoryNames, categoryRepresentations, categoryProperties, presetDraft, type Representation } from './objects';
 import type { ObjectCategory } from './semantics';
 const $ = <T extends HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
 const container = $<HTMLDivElement>('#container');
 const store = new DocumentStore(newDocument(container.clientWidth || 800, container.clientHeight || 600));
 const renderer = new DiagramRenderer(store, container);
 const vectorUI=initializeVectors(store,renderer);
+const coordinateUI=initializeCoordinates(store,renderer);
 const dialog = $<HTMLDialogElement>('#object-dialog'), status = $('#status');
-for(const [key,name] of Object.entries(categoryNames)){const option=document.createElement('option');option.value=key;option.textContent=name;$<HTMLSelectElement>('#object-category').append(option);}
-for(const preset of objectPresets){const option=document.createElement('option');option.value=preset.key;option.textContent=categoryNames[preset.key];$<HTMLSelectElement>('#object-preset').append(option);}
-function configureCategory(category:ObjectCategory){ $<HTMLSelectElement>('#object-category').value=category; $('#polarity-label').hidden=category!=='chargedPlate';const rep=$<HTMLSelectElement>('#object-representation');const specific=['planetSurface','chargedPlate','fluid'].includes(category)?'surface':category==='spatialPoint'?'point':category==='spring'?'spring':category==='cable'?'cable':undefined;for(const option of rep.options)option.disabled=option.value!=='none' && (specific?option.value!==specific:['surface','spring','cable'].includes(option.value));}
+for(const [key,name] of Object.entries(categoryNames)){const option=document.createElement('option');option.value=key;option.textContent=name;$<HTMLSelectElement>('#object-type').append(option);}
+function configureCategory(category:ObjectCategory){
+ $<HTMLSelectElement>('#object-type').value=category;
+ $('#polarity-label').hidden=category!=='chargedPlate';
+ $('#representation-hint').hidden=category!=='ordinary';
+ const rep=$<HTMLSelectElement>('#object-representation'),old=rep.value;
+ const names:Record<Representation,string>={circle:'Circle',rectangle:'Rectangle',point:'Point',surface:'Surface',spring:'Spring',cable:'Cable',none:'No visible representation'};
+ rep.replaceChildren();for(const key of categoryRepresentations[category]){const option=document.createElement('option');option.value=key;option.textContent=names[key];rep.append(option);}
+ if(categoryRepresentations[category].includes(old as Representation))rep.value=old;
+}
 let editingId: string | undefined;
 let selectedObjectId: string | undefined;
 let legacy: Graphic | undefined;
@@ -27,9 +36,7 @@ renderer.onSelect = element => { selectedObjectId = element?.semanticId; updateS
 function selectObject(id: string) { const g = objectGraphic(store, id); renderer.select(g && g.visible !== false ? g.id : null); selectedObjectId = id; updateSelectionName(); }
 function openObject(id?: string) {
   editingId = id;
-  $<HTMLSelectElement>('#object-preset').value = 'custom';
-  $<HTMLSelectElement>('#object-preset').disabled = !!id;
-  const draft = objectDraft(store, id); configureCategory(draft.category!);$<HTMLSelectElement>('#object-category').disabled=!!id;$<HTMLSelectElement>('#object-polarity').value=draft.polarity!;
+  const draft = objectDraft(store, id); configureCategory(draft.category!);$<HTMLSelectElement>('#object-type').disabled=!!id;$<HTMLSelectElement>('#object-polarity').value=draft.polarity!;
   $<HTMLInputElement>('#object-name').value = draft.name;
   $<HTMLSelectElement>('#object-representation').value = draft.representation;
   $<HTMLInputElement>('#show-name').checked = draft.showName;
@@ -45,13 +52,22 @@ $('#cancel-object').addEventListener('click', () => dialog.close());
 $('#object-form').addEventListener('submit', async event => {
   event.preventDefault(); if (busy) return; busy = true;
   try {
-    const id = saveObject(store, { id: editingId,category:$<HTMLSelectElement>('#object-category').value as ObjectCategory,polarity:$<HTMLSelectElement>('#object-polarity').value as 'positive'|'negative', name: $<HTMLInputElement>('#object-name').value, representation: $<HTMLSelectElement>('#object-representation').value as Representation, showName: $<HTMLInputElement>('#show-name').checked, showProperties: $<HTMLInputElement>('#show-properties').checked, properties: readPropertyFields($('#property-fields')) });
+    const id = saveObject(store, { id: editingId,category:$<HTMLSelectElement>('#object-type').value as ObjectCategory,polarity:$<HTMLSelectElement>('#object-polarity').value as 'positive'|'negative', name: $<HTMLInputElement>('#object-name').value, representation: $<HTMLSelectElement>('#object-representation').value as Representation, showName: $<HTMLInputElement>('#show-name').checked, showProperties: $<HTMLInputElement>('#show-properties').checked, properties: readPropertyFields($('#property-fields')) });
     await renderer.render(); selectObject(id); dialog.close();
   } catch (error) { $('#object-error').textContent = error instanceof Error ? error.message : String(error); } finally { busy = false; }
 });
-function applyPreset(category:ObjectCategory){const draft=presetDraft(category);configureCategory(category);$<HTMLInputElement>('#object-name').value=draft.name;$<HTMLSelectElement>('#object-representation').value=draft.representation;$<HTMLSelectElement>('#object-polarity').value=draft.polarity!;showPropertyFields($('#property-fields'),draft.properties,category);refreshPropertyPreview();}
-$<HTMLSelectElement>('#object-preset').addEventListener('change',event=>{const key=(event.target as HTMLSelectElement).value;if(key==='custom')applyPreset('ordinary');else applyPreset(key as ObjectCategory);});
-$<HTMLSelectElement>('#object-category').addEventListener('change',event=>applyPreset((event.target as HTMLSelectElement).value as ObjectCategory));
+function applyType(category:ObjectCategory){
+ const currentName=$<HTMLInputElement>('#object-name').value;
+ let previous:ReturnType<typeof readPropertyFields>={};try{previous=readPropertyFields($('#property-fields'));}catch{/* Incomplete draft fields must not prevent changing type. */}
+ const customName=currentName.trim() && !Object.values(categoryNames).includes(currentName) && currentName!=='Water';
+ const draft=presetDraft(category);configureCategory(category);
+ $<HTMLInputElement>('#object-name').value=customName?currentName:category==='ordinary'?'':draft.name;
+ $<HTMLSelectElement>('#object-representation').value=draft.representation;
+ $<HTMLSelectElement>('#object-polarity').value=draft.polarity!;
+ for(const key of categoryProperties[category])if(previous?.[key])draft.properties![key]=previous[key];
+ showPropertyFields($('#property-fields'),draft.properties,category);refreshPropertyPreview();
+}
+$<HTMLSelectElement>('#object-type').addEventListener('change',event=>{try{applyType((event.target as HTMLSelectElement).value as ObjectCategory);}catch(error){$('#object-error').textContent=(error as Error).message;}});
 function showCollection() {
   const host = $('#object-list'); host.replaceChildren();
   if (!store.document.semantics.objects.length) { const empty=document.createElement('p');empty.textContent='No objects yet. Use Object to define one.';host.append(empty); }
@@ -95,6 +111,7 @@ async function action(name: string) {
   try {
     if (name === 'object') openObject();
     else if (name === 'collection') showCollection();
+    else if (name === 'coordinates') coordinateUI.open();
     else if (name === 'edit') {const g=store.document.presentation.elements.find(e=>e.id===renderer.selectedId);if(g?.vectorId){vectorUI.open(g.vectorId);return;} const id = selectedObject(); if (id) openObject(id); else report('Select an object to edit its definition.'); }
     else if (name === 'grid') renderer.toggleGrid();
     else if (name === 'delete') await removeSelected();
@@ -102,7 +119,7 @@ async function action(name: string) {
     else if (name === 'open') $<HTMLInputElement>('#file-input').click();
   } catch (error) { report(error); }
 }
-document.querySelectorAll<HTMLButtonElement>('[data-action]').forEach(button => button.addEventListener('click', () => void action(button.dataset.action!)));
+document.querySelectorAll<HTMLButtonElement>('[data-action]').forEach(button => button.addEventListener('click', () => { $<HTMLDetailsElement>('#elements-menu').open=false; void action(button.dataset.action!); }));
 document.addEventListener('keydown', event => { if (event.key === 'Delete' && !document.querySelector('dialog[open]') && !(event.target instanceof HTMLInputElement) && !(event.target instanceof HTMLTextAreaElement)) void removeSelected().catch(report); });
 $<HTMLInputElement>('#file-input').addEventListener('change', async event => {
   const chooser = event.target as HTMLInputElement, file = chooser.files?.[0]; if (!file || busy) return; busy = true;
@@ -111,7 +128,9 @@ $<HTMLInputElement>('#file-input').addEventListener('change', async event => {
   catch (error) { store.replace(previous); await renderer.render().catch(() => {}); report(error); }
   finally { busy = false; chooser.value = ''; }
 });
+document.addEventListener('click',event=>{if(!$("#elements-menu").contains(event.target as Node))$<HTMLDetailsElement>('#elements-menu').open=false;});
+document.addEventListener('keydown',event=>{if(event.key==='Escape')$<HTMLDetailsElement>('#elements-menu').open=false;});
 void renderer.render().catch(report);
 
-function refreshPropertyPreview(){refreshPropertySymbols($('#property-fields'),store.document,$<HTMLInputElement>('#object-name').value,$<HTMLSelectElement>('#object-category').value as ObjectCategory,editingId);}
+function refreshPropertyPreview(){refreshPropertySymbols($('#property-fields'),store.document,$<HTMLInputElement>('#object-name').value,$<HTMLSelectElement>('#object-type').value as ObjectCategory,editingId);}
 $('#object-name').addEventListener('input',refreshPropertyPreview);

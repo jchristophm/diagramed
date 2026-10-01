@@ -2,18 +2,17 @@
 <html lang="en">
 <head><meta charset="UTF-8"><title>Diagramed</title><meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="stylesheet" href="style.css"></head>
 <body>
-<div id="toolbar-top"><button data-action="object" title="Object">Object</button><button data-action="collection" title="Objects">Objects</button><button data-action="edit" title="Edit object">Edit</button><button data-action="vector" title="Vector">Vector</button><button data-action="vectors" title="Vectors">Vectors</button><span id="selected-name"></span></div>
+<div id="toolbar-top"><button data-action="object" title="Object">Object</button><button data-action="vector" title="Vector">Vector</button><button data-action="coordinates" title="Coordinates">Coordinates</button><details id="elements-menu"><summary>Elements</summary><div role="group" aria-label="Element management"><button data-action="collection">Objects</button><button data-action="vectors">Vectors</button><button data-action="coordinates">Coordinate System</button></div></details><span id="selected-name"></span></div>
 <div id="main-canvas"><div id="container" aria-label="Physics diagram"></div></div>
 <div id="toolbar-bottom"><button data-action="open" title="Open JSON">Open</button><button data-action="grid" title="Toggle Grid">Grid</button><button data-action="delete" title="Delete selected object">Delete</button><button data-action="download" title="Download JSON">Save</button></div>
 <input id="file-input" type="file" accept=".json,application/json" hidden><p id="status" role="status" aria-live="polite"></p>
 <dialog id="object-dialog" aria-labelledby="object-title"><form id="object-form">
 <h2 id="object-title">Define object</h2>
-<label>Start with <select id="object-preset"><option value="custom">Custom object</option></select></label>
-<label>Category <select id="object-category"></select></label>
+<label>Object type <select id="object-type"></select></label>
 <label id="polarity-label">Polarity <select id="object-polarity"><option value="positive">Positive</option><option value="negative">Negative</option></select></label>
 <label>Name <input id="object-name" required maxlength="120" autocomplete="off"></label>
 <label>Representation <select id="object-representation"><option value="circle">Circle</option><option value="rectangle">Rectangle</option><option value="point">Point</option><option value="surface">Surface</option><option value="spring">Spring</option><option value="cable">Cable</option><option value="none">No visible representation</option></select></label>
-<p class="hint">All representations describe point-like physical objects.</p>
+<p id="representation-hint" class="hint">All representations describe point-like physical objects.</p>
 <div id="property-fields"></div>
 <label class="check"><input id="show-name" type="checkbox" checked>Show name label</label>
 <label class="check"><input id="show-properties" type="checkbox" checked>Show property symbols</label>
@@ -31,8 +30,16 @@
 <div id="magnitude-fields"></div>
 <div id="friction-options"><label>Friction <select id="vector-friction"><option value="none">None</option><option value="static">Static</option><option value="kinetic">Kinetic</option></select></label><div id="friction-magnitude"></div><label class="check"><input id="coefficient-enabled" type="checkbox">Define friction coefficient</label><div id="coefficient-fields"></div><label class="check"><input id="resultant-visible" type="checkbox">Show resultant</label></div>
 <div id="volume-fields"></div>
+<label id="components-label" class="check"><input id="vector-components" type="checkbox" checked>Show coordinate components</label>
+<p id="components-hint" class="hint">Define a coordinate system to display components.</p>
 <label class="check"><input id="vector-visible" type="checkbox" checked>Show vector</label>
 <p id="vector-error" role="alert"></p><div class="dialog-actions"><button type="button" id="cancel-vector">Cancel</button><button type="submit" id="save-vector">Save vector</button></div></form></dialog>
 <dialog id="vector-collection"><h2>Vectors</h2><div id="vector-list"></div><p id="vector-collection-error" role="alert"></p><button id="close-vectors">Close</button></dialog>
+<dialog id="coordinate-dialog" aria-labelledby="coordinate-title"><form id="coordinate-form"><h2 id="coordinate-title">Define coordinate system</h2>
+<label>Dimensionality <select id="coordinate-dimensions"><option value="1">1D</option><option value="2" selected>2D</option></select></label>
+<label>Rotation angle (degrees) <input id="coordinate-angle" type="number" step="any" value="0" required min="-1000000" max="1000000"></label>
+<p class="hint">Positive angles rotate counterclockwise. Drag the origin to move the axes; select the axes to rotate them.</p>
+<label class="check"><input id="coordinate-visible" type="checkbox" checked>Show coordinate system</label><p id="coordinate-error" role="alert"></p>
+<button id="delete-coordinates" type="button">Delete coordinate system</button><div class="dialog-actions"><button id="cancel-coordinates" type="button">Cancel</button><button type="submit">Save coordinates</button></div></form></dialog>
 <script type="module" src="/src/main.ts"></script>
 </body></html>

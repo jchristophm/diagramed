@@ -19,6 +19,7 @@ export function canonicalSymbol(symbol: string) { return symbol.trim().replace(/
 export type Representation = 'circle' | 'rectangle' | 'point' | 'surface' | 'spring' | 'cable' | 'none';
 export const categoryNames: Record<ObjectCategory,string> = {ordinary:'Ordinary physical object',spatialPoint:'Spatial point',planetSurface:'Planet Surface',spring:'Spring',cable:'String/Cable',chargedPlate:'Charged Plate',fluid:'Fluid'};
 export const categoryProperties: Record<ObjectCategory,PropertyQuantity[]> = {ordinary:['mass','charge','density'],spatialPoint:['charge'],planetSurface:['gravity'],spring:['springConstant','extension'],cable:[],chargedPlate:['surfaceChargeDensity'],fluid:['density']};
+export const categoryRepresentations: Record<ObjectCategory,Representation[]> = {ordinary:['circle','rectangle','point','none'],spatialPoint:['point','none'],planetSurface:['surface','none'],spring:['spring','none'],cable:['cable','none'],chargedPlate:['surface','none'],fluid:['surface','none']};
 export function propertySigned(key: PropertyQuantity) { return ['charge','extension','surfaceChargeDensity'].includes(key); }
 export function presetDraft(category: ObjectCategory): ObjectDraft { const properties: ObjectDraft['properties']={}; if(category==='planetSurface')properties.gravity={state:'known',unit:'m/s^2',value:9.8}; if(category==='fluid')properties.density={state:'known',unit:'kg/m^3',value:1000}; return {name:category==='fluid'?'Water':categoryNames[category],category,representation:category==='planetSurface'?'none':category==='spatialPoint'?'point':['chargedPlate','fluid'].includes(category)?'surface':category==='spring'?'spring':category==='cable'?'cable':'circle',polarity:'positive',showName:true,showProperties:true,properties}; }
 export const objectPresets = (Object.keys(categoryNames) as ObjectCategory[]).filter(key=>key!=='ordinary').map(key=>({key,...presetDraft(key)}));
@@ -38,6 +39,7 @@ export function saveObject(store: DocumentStore, draft: ObjectDraft): string {
   const id = existing?.id || crypto.randomUUID();
   const category = draft.category || existing?.category || 'ordinary';
   if (!Object.hasOwn(categoryNames, category)) throw new Error('Unsupported object category.');
+  if (!categoryRepresentations[category].includes(draft.representation)) throw new Error('Representation does not match this object category.');
   if(existing && category !== (existing.category || 'ordinary')) throw new Error('Object category cannot be changed.');
   const polarity = draft.polarity || existing?.polarity || 'positive';
   if(!['positive','negative'].includes(polarity))throw new Error('Invalid plate polarity.');

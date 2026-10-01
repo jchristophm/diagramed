@@ -36,6 +36,7 @@ export function parseDocument(text: string): DiagramDocument {
     const points = list(e.points, 'points'); if (points.length !== 4) fail('line endpoints require four coordinates.'); points.forEach(v => number(v, 'endpoint'));
     if(e.vectorId!==undefined)string(e.vectorId,'vector identity');
     if (e.semanticId !== undefined) string(e.semanticId, 'semantic identity');
+    if (e.showComponents !== undefined && typeof e.showComponents !== 'boolean') fail('component visibility must be true or false.');
     if (e.visible !== undefined && typeof e.visible !== 'boolean') fail('element visibility must be true or false.');
     if (e.label !== undefined) {
       const label = object(e.label, 'label presentation');
@@ -58,7 +59,7 @@ export function parseDocument(text: string): DiagramDocument {
       if (key === 'interactions') list(entry.objectIds, 'interaction objects').forEach(v => string(v, 'object reference'));
       if (key === 'variables') { if (entry.value !== undefined && (typeof entry.value !== 'number' || !Number.isFinite(entry.value))) fail('variable value must be a finite number.'); if (entry.unit !== undefined) string(entry.unit, 'variable unit'); }
       if (key === 'vectors') { if (!['force', 'field', 'motion','separation'].includes(entry.kind as string)) fail('unknown semantic vector kind.'); for (const f of ['objectId', 'interactionId']) if (entry[f] !== undefined) string(entry[f], f); }
-      if (key === 'coordinateSystems') { if (entry.dimensions !== 1 && entry.dimensions !== 2) fail('coordinate system dimension must be 1 or 2.'); const origin = list(entry.origin, 'origin'); if (origin.length !== 2) fail('origin must contain two coordinates.'); origin.forEach(v => number(v, 'origin coordinate')); number(entry.angle, 'coordinate angle'); }
+      if (key === 'coordinateSystems') { if (entry.dimensions !== 1 && entry.dimensions !== 2) fail('coordinate system dimension must be 1 or 2.'); const origin = list(entry.origin, 'origin'); if (origin.length !== 2) fail('origin must contain two coordinates.'); origin.forEach(v => number(v, 'origin coordinate')); number(entry.angle, 'coordinate angle'); if (entry.visible !== undefined && typeof entry.visible !== 'boolean') fail('coordinate visibility must be boolean.'); }
       if (key === 'components' && !['x', 'y'].includes(entry.axis as string)) fail('component axis must be x or y.');
     }
   }
@@ -133,6 +134,8 @@ export function validateRelationships(doc: DiagramDocument) {
   for (const e of doc.presentation.elements) if (e.semanticId && !objects.has(e.semanticId)) fail('graphical element references a missing physical object.');
   const interactions = new Set(doc.semantics.interactions.map(i => i.id));
   const vectors = new Set(doc.semantics.vectors.map(v => v.id));
+  if (doc.semantics.coordinateSystems.length > 1) fail('only one coordinate system is supported.');
+  for (const c of doc.semantics.coordinateSystems) if (![1,2].includes(c.dimensions) || c.origin.length !== 2 || c.origin.some(v => !Number.isFinite(v)) || !Number.isFinite(c.angle) || (c.visible !== undefined && typeof c.visible !== 'boolean')) fail('invalid coordinate system.');
   const coordinates = new Set(doc.semantics.coordinateSystems.map(c => c.id));
   for(const v of doc.semantics.vectors){if(v.kind==='separation' && (!v.fromId || !v.toId || v.fromId===v.toId || !objects.has(v.fromId) || !objects.has(v.toId)))fail('invalid separation endpoints.');if(v.kind==='separation' && (variables.get(v.variableId)?.quantity!=='length'||variables.get(v.variableId)?.ownerVectorId!==v.id))fail('invalid separation magnitude.');const graphics=doc.presentation.elements.filter(g=>g.vectorId===v.id);if(graphics.length!==1 || !['arrow','dashedArrow'].includes(graphics[0].kind)||typeof graphics[0].visible!=='boolean')fail('missing vector configuration.');const g=graphics[0];if(g.points[0]!==0||g.points[1]!==0||g.rotation!==0||g.scaleX!==1||g.scaleY!==1)fail('invalid attached vector frame.');if((v.kind==='separation')!==(g.kind==='dashedArrow'))fail('vector arrow style does not match its semantic kind.');}
   for(const g of doc.presentation.elements)if(g.vectorId && (!vectors.has(g.vectorId)||g.semanticId))fail('invalid graphical vector reference.');

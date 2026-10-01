@@ -75,3 +75,20 @@ Limits retain 10 MB JSON, 5,000 records per array, 100,000 characters per genera
 ## Contract 3.1 compatibility
 
 No new format version. Historical symbols stay custom unless already marked generated. An unambiguous generic F on a friction-enabled normal component is corrected to N with its original variable/vector IDs and expression references. Unrelated custom component symbols are retained. All imported structural data is validated before notation repair, then validated again before replacement. Drawing controls are removed from the UI only: directions, endpoints, transforms and component lengths remain persisted. Physical edits preserve existing vector geometry; displayed resultants remain derived from normal plus perpendicular friction.
+
+
+## Coordinate systems and graphical decomposition (2026-10-01)
+
+The existing version-3 `semantics.coordinateSystems` array permits zero or one entry:
+
+```json
+{"id":"persistent-id","dimensions":2,"origin":[400,300],"angle":30,"visible":true}
+```
+
+`angle` is in mathematical degrees: positive counterclockwise, x right at zero, y up. The screen-space basis is x=(cos(a),-sin(a)), y=(-sin(a),-cos(a)). `visible` is optional for older definitions and defaults to true. No physical object owns the frame. Translating its origin cannot alter projections. Switching dimensions preserves origin and x orientation; retained semantic y components are unavailable graphically in 1D.
+
+Vector graphics optionally persist `showComponents` (boolean, default true with an explicit frame). Projection geometry and component labels are derived, not serialized as physical quantities or new variables. Labels append x/y to existing participant subscripts. Only the active vector displays coordinate components; it remains active while the frame is manipulated. Dot styling and parent labels remain intact.
+
+`COMPONENT_ANGLE_TOLERANCE_DEGREES` is a presentation-only internal constant, default 10. Let delta be the acute angle between the actual vector and the undirected rotated x axis (0..90 degrees). Graphical decomposition appears only if delta>10 and delta<80. In 2D both projections appear; in 1D only x appears. At either inclusive boundary all projection arrows and labels are suppressed. Nothing snaps, rotates or rounds authoritative vector data. Recalculation follows vector/frame rotation and live attached geometry.
+
+Missing frames do not introduce implicit axes or new graphics. The earlier application has semantic component records but no coordinate-projection renderer; its physical contact vectors retain their legacy behavior. Deleting a frame removes dependent semantic component records and graphical display settings, while preserving physical vectors and variables. Imports reject duplicate frames and malformed visibility. Version remains 3.

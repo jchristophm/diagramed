@@ -7,6 +7,7 @@ import type { PropertyQuantity, ObjectCategory } from './semantics';
 export function showPropertyFields(host: HTMLElement, properties: ObjectDraft['properties'] = {}, category: ObjectCategory = 'ordinary') {
   host.replaceChildren();
   for (const [key, definition] of Object.entries(propertyDefinitions)) {
+    if (!categoryProperties[category].includes(key as PropertyQuantity)) continue;
     const property = properties[key as PropertyQuantity];
     const fieldset = document.createElement('fieldset'); fieldset.dataset.quantity = key;
     const heading = document.createElement('label'); heading.className = 'check';
