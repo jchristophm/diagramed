@@ -1,6 +1,6 @@
 # Final coordinate and interface cleanup
 
-Implementation prepared 2026-10-01 UTC on development, based on 6cd949a8a5717544e0f1042f6d76c8d731525e1b. Deployment and live acceptance are pending the automatic push workflow; the historical reports below describe previous cycles.
+Completed and deployed 2026-10-01 UTC on development. Verified revision: 538872c2f6aedc17f2b091d431ec596960c2ead3, including implementation 460f42daa967f4a44675cdb24d91717a2c42dba2. Successful automatic verification/deployment/live-acceptance run: https://github.com/jchristophm/diagramed/actions/runs/36923439524 . Live application: https://jchristophm.github.io/diagramed/ . Historical reports below describe previous cycles.
 
 - Independent optional reverseX/reverseY booleans reuse the coordinate record and existing configuration dialog. Rotation remains the reference angle; the handle retains its independent reference direction. Flips preserve the origin, perpendicular axes, physical vector geometry, identities and naming. Hidden y reversal persists in 1D and restores in 2D.
 - Derived graphical projections respect signed axis conventions, while the existing inclusive 10-degree suppression remains unchanged for rotated/reversed frames and 1D. No numerical physical quantities or semantic component calculations were added.
@@ -8,7 +8,11 @@ Implementation prepared 2026-10-01 UTC on development, based on 6cd949a8a5717544
 - New Planet Surface objects default to visible Earth with g=9.8. Existing saved names, properties and hidden representations are retained. Vector Type options now read Force, Field, Separation, Acceleration, Velocity, Displacement with unchanged eligibility.
 - Native JSON remains version 3. Missing reversal flags retain previous directions. No dependency, framework, new physics type or deployment system was added.
 
-Local verification: 223 unit tests passed; TypeScript and Vite production build passed with the existing bundle-size advisory. Focused tests cover reversal combinations, rotated geometry, inclusive tolerance boundaries, persistence/legacy files, duplicate Weight BY/ON naming, defaults, toolbar behavior and menu order. The browser suite contains 52 desktop/mobile cases. Local Chromium launch is blocked by this workspace's socket restrictions; required compiled-build browser checks and independent live acceptance run on the existing GitHub Actions runners before completion is reported. Physical touchscreen testing remains separate.
+Verification: 223 unit tests across 11 files passed locally and on GitHub; TypeScript and Vite production build passed with the existing bundle-size advisory. All 52 compiled-build browser cases passed on desktop Chromium and Pixel 7 mobile emulation. Pages deployment succeeded, followed by all 52 independent live acceptance cases passing against the public URL. Downloaded public HTML exactly matches dist/index.html; JavaScript and CSS asset SHA-256 hashes match the production build. Desktop and mobile screenshots were inspected.
+
+Focused tests cover reversal combinations, rotated geometry, inclusive tolerance boundaries, persistence/legacy files, duplicate Weight BY/ON naming, defaults, toolbar behavior and menu order. The first candidate passed all six new browser cases but caught an existing collision fixture relying on the old Planet Surface default name. The fixture now explicitly creates a custom-named Planet Surface to retain its original collision assertion; the full corrected suite passed. Local Chromium launch was blocked by workspace socket restrictions, so browser verification used the existing GitHub runners. Physical touchscreen testing remains separate. No unresolved regression was found in the required checks.
+
+This documentation-only completion commit skips CI to avoid repeating an already successful deployment; application and test contents remain identical to the verified revision.
 
 Contract: docs/DEVELOPMENT_CONTRACT_5.md. The existing automatic development verification → Pages deployment → live acceptance workflow is unchanged.
 
