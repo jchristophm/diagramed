@@ -1,19 +1,20 @@
+import {canvasPoint as transformedPoint,fixtureView} from './view-helpers';
 import {test,expect,type Page} from './test-fixture';
 import {readFile} from 'node:fs/promises';
 import {DocumentStore,newDocument} from '../../src/model';
 import {saveObject,objectDraft} from '../../src/objects';
 import {saveVector,vectorGraphic} from '../../src/physics';
 async function saved(page:Page){const pending=page.waitForEvent('download');await page.getByTitle('Download JSON').click();return JSON.parse(await readFile((await (await pending).path())!,'utf8'));}
-async function load(page:Page,doc:any){await page.locator('#file-input').setInputFiles({name:'coordinates.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(doc))});await expect(page.locator('#status')).toContainText('Opened');}
+async function load(page:Page,doc:any){await page.locator('#file-input').setInputFiles({name:'coordinates.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(doc))});await expect(page.locator('#status')).toContainText('Opened');await fixtureView(page,doc);}
 async function selectVector(page:Page,symbol:string){await page.locator('#elements-menu summary').click();await page.getByRole('button',{name:'Vectors',exact:true}).click();await page.getByRole('button',{name:`Select ${symbol}`,exact:true}).click();}
 async function count(page:Page){return page.evaluate(()=>(window as any).Konva.stages[0].find('.vector-component').length);}
 async function gesture(page:Page,mobile:boolean,start:{x:number;y:number},end:{x:number;y:number}){if(mobile){const cdp=await page.context().newCDPSession(page);await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[start]});for(let i=1;i<=8;i++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:start.x+(end.x-start.x)*i/8,y:start.y+(end.y-start.y)*i/8}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await cdp.detach();}else{await page.mouse.move(start.x,start.y);await page.mouse.down();await page.mouse.move(end.x,end.y,{steps:8});await page.mouse.up();}}
-async function canvasPoint(page:Page,x:number,y:number){const box=(await page.locator('.konvajs-content').boundingBox())!;const scale=await page.evaluate(()=>(window as any).Konva.stages[0].scaleX());return {x:box.x+x*scale,y:box.y+y*scale};}
-function fixture(){const s=new DocumentStore(newDocument(800,600));const o=saveObject(s,{...objectDraft(s),name:'Book'});s.update(s.document.presentation.elements[0].id,{x:200,y:300});const id=saveVector(s,{kind:'velocity',targetId:o,magnitude:{state:'unknown',unit:'m/s'}});vectorGraphic(s.document,id)!.points=[0,0,100,-100];return s.document;}
+async function canvasPoint(page:Page,x:number,y:number){return transformedPoint(page,x,y);}
+function fixture(){const d=newDocument(800,600);d.presentation.canvas.minX=0;d.presentation.canvas.minY=0;const s=new DocumentStore(d);const o=saveObject(s,{...objectDraft(s),name:'Book'});s.update(s.document.presentation.elements[0].id,{x:200,y:300});const id=saveVector(s,{kind:'velocity',targetId:o,magnitude:{state:'unknown',unit:'m/s'}});vectorGraphic(s.document,id)!.points=[0,0,100,-100];return s.document;}
 test('coordinate creation, configuration, hide/show, dimensions and deletion persist',async({page})=>{
  await page.goto('./');await expect(page.getByRole('button',{name:'Edit',exact:true})).toHaveCount(0);
  await page.getByTitle('Coordinates',{exact:true}).click();await page.locator('#coordinate-dimensions').selectOption('1');await page.locator('#coordinate-angle').fill('37');await page.getByRole('button',{name:'Save coordinates'}).click();await expect(page.locator('#coordinate-dialog')).not.toBeVisible();
- let doc=await saved(page),c=doc.semantics.coordinateSystems[0];expect(doc.semantics.coordinateSystems).toHaveLength(1);expect(c).toMatchObject({dimensions:1,angle:37,visible:true,origin:[doc.presentation.canvas.width/2,doc.presentation.canvas.height/2]});
+ let doc=await saved(page),c=doc.semantics.coordinateSystems[0];expect(doc.semantics.coordinateSystems).toHaveLength(1);expect(c).toMatchObject({dimensions:1,angle:37,visible:true,origin:[0,0]});
  await page.locator('#elements-menu summary').click();await page.getByRole('button',{name:'Coordinate System',exact:true}).click();await page.locator('#coordinate-dimensions').selectOption('2');await page.locator('#coordinate-visible').uncheck();await page.getByRole('button',{name:'Save coordinates'}).click();await expect(page.locator('#coordinate-dialog')).not.toBeVisible();
  doc=await saved(page);expect(doc.semantics.coordinateSystems[0]).toMatchObject({...c,dimensions:2,visible:false});expect(await page.evaluate(()=>(window as any).Konva.stages[0].find('.coordinate-rotation-handle').length)).toBe(0);
  await page.reload();await load(page,doc);expect(await saved(page)).toEqual(doc);

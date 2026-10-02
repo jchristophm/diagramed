@@ -10,7 +10,21 @@ export interface CoordinateSystem { id: string; dimensions: 1 | 2; origin: [numb
 export interface PhysicalVector { id: string; kind: 'force' | 'field' | 'motion' | 'separation'; fromId?: string; toId?: string; sourceId?: string; separationId?: string; fieldType?: 'gravitational'|'electric'; motionType?: 'velocity'|'acceleration'|'displacement'; role?: 'normal'|'friction'|'resultant'; variableId: string; objectId?: string; interactionId?: string }
 export interface VectorComponent { id: string; vectorId: string; coordinateSystemId: string; axis: 'x' | 'y'; variableId: string }
 export interface Semantics {
+  angles?: SemanticAngle[];
   objects: PhysicalObject[]; interactions: Interaction[]; variables: Variable[];
   vectors: PhysicalVector[]; coordinateSystems: CoordinateSystem[]; components: VectorComponent[];
 }
 export const emptySemantics = (): Semantics => ({ objects: [], interactions: [], variables: [], vectors: [], coordinateSystems: [], components: [] });
+
+export type DirectionReference =
+  | { type: 'vector'; vectorId: string }
+  | { type: 'component'; vectorId: string; coordinateSystemId: string; axis: 'x' | 'y' }
+  | { type: 'axis'; coordinateSystemId: string; axis: 'x' | 'y'; sign: 1 | -1 };
+export interface SemanticAngle {
+  id: string;
+  from: DirectionReference;
+  to: DirectionReference;
+  value?: number; // Explicit degrees only; never inferred from drawing geometry.
+  visible: boolean;
+  presentation: { x: number; y: number; labelOffset: [number, number] };
+}

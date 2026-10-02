@@ -1,3 +1,5 @@
+import {migrateDocumentSpace} from '../../src/persistence';
+import {canvasView} from './view-helpers';
 import { test, expect, type Page } from './test-fixture';
 import { readFile } from 'node:fs/promises';
 export async function save(page: Page) {
@@ -37,13 +39,13 @@ async function gesture(page:Page, mobile:boolean, start:{x:number;y:number}, end
 test('required Rock Table Planet Surface acceptance with movement resize and reload',async({page},info)=>{
  await page.goto('./');await page.getByTitle('Object',{exact:true}).click();await page.locator('#object-name').fill('Rock');await page.locator('#mass-enabled').check();await page.getByRole('button',{name:'Create object',exact:true}).click();await expect(page.locator('#object-dialog')).not.toBeVisible();
  const before=await save(page);const rockId=before.semantics.objects[0].id,variableId=before.semantics.variables[0].id;const rock=before.presentation.elements[0];
- const box=(await page.locator('.konvajs-content').boundingBox())!;const scale=box.width/before.presentation.canvas.width;
- const rockStart={x:box.x+(rock.x+rock.radius)*scale,y:box.y+rock.y*scale};
+ const box=(await page.locator('.konvajs-content').boundingBox())!;const view=await canvasView(page),scale=view.scale;
+ const rockStart={x:view.x+(rock.x+rock.radius)*scale,y:view.y+rock.y*scale};
  await gesture(page,info.project.name==='mobile',rockStart,{x:rockStart.x-80*scale,y:rockStart.y-120*scale});
  const moved=await save(page);expect(moved.presentation.elements[0].y).not.toBe(rock.y);expect(moved.semantics.objects[0].id).toBe(rockId);
  await page.getByTitle('Object',{exact:true}).click();await page.locator('#object-name').fill('Table');await page.locator('#object-representation').selectOption('rectangle');await page.getByRole('button',{name:'Create object',exact:true}).click();await expect(page.locator('#object-dialog')).not.toBeVisible();
  const withTable=await save(page),table=withTable.presentation.elements[1];
- const anchor={x:box.x+(table.x+table.width+4)*scale,y:box.y+(table.y+table.height/2)*scale};
+ const anchor={x:view.x+(table.x+table.width+4)*scale,y:view.y+(table.y+table.height/2)*scale};
  await gesture(page,info.project.name==='mobile',anchor,{x:anchor.x+100*scale,y:anchor.y});
  const resized=await save(page);expect(resized.presentation.elements[1].scaleX).toBeGreaterThan(2);expect(resized.presentation.elements[1].scaleY).toBeCloseTo(1);
  await page.getByTitle('Object',{exact:true}).click();await page.locator('#object-type').selectOption('planetSurface');await page.locator('#object-name').fill('Planet Surface');await page.locator('#object-representation').selectOption('none');await page.getByRole('button',{name:'Create object',exact:true}).click();await expect(page.locator('#object-dialog')).not.toBeVisible();
@@ -56,18 +58,18 @@ test('required Rock Table Planet Surface acceptance with movement resize and rel
  await page.screenshot({path:`test-results/acceptance-${info.project.name}.png`});
 });
 test('Phase 1 graphics remain intact and editable with no generic creation tools',async({page})=>{
- const legacy=JSON.parse(await readFile('examples/representative.diagramed.json','utf8'));
+ const legacy=JSON.parse(await readFile('examples/representative.diagramed.json','utf8'));migrateDocumentSpace(legacy);
  await page.goto('./');await page.locator('#file-input').setInputFiles({name:'phase1.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(legacy))});await expect(page.locator('#status')).toContainText('Opened');
  const reopened=await save(page);expect(reopened.version).toBe(3);expect(reopened.presentation).toEqual(legacy.presentation);expect(reopened.semantics).toEqual(legacy.semantics);
- const label=legacy.presentation.elements.find((e:any)=>e.kind==='text');const box=(await page.locator('.konvajs-content').boundingBox())!;const scale=box.width/legacy.presentation.canvas.width;
- await page.mouse.dblclick(box.x+label.x*scale+8,box.y+label.y*scale+8);await expect(page.locator('#legacy-dialog')).toBeVisible();await page.locator('#legacy-input').fill('Legacy edited');await page.getByRole('button',{name:'Save label',exact:true}).click();await expect(page.locator('#legacy-dialog')).not.toBeVisible();
+ const label=legacy.presentation.elements.find((e:any)=>e.kind==='text');const box=(await page.locator('.konvajs-content').boundingBox())!;const view=await canvasView(page),scale=view.scale;
+ await page.mouse.dblclick(view.x+label.x*scale+8,view.y+label.y*scale+8);await expect(page.locator('#legacy-dialog')).toBeVisible();await page.locator('#legacy-input').fill('Legacy edited');await page.getByRole('button',{name:'Save label',exact:true}).click();await expect(page.locator('#legacy-dialog')).not.toBeVisible();
  expect((await save(page)).presentation.elements.find((e:any)=>e.id===label.id).text).toBe('Legacy edited');expect(await page.getByTitle('Arrow',{exact:true}).count()).toBe(0);
 });
 test('point touch targets, charge density editing and symbol collision guidance',async({page},info)=>{
  await page.goto('./');await page.getByTitle('Object',{exact:true}).click();await page.locator('#object-name').fill('Particle');await page.locator('#object-representation').selectOption('point');await page.locator('#charge-enabled').check();await page.locator('#charge-state').selectOption('known');await page.locator('#charge-value').fill('-1e-6');await page.locator('#density-enabled').check();await page.getByRole('button',{name:'Create object',exact:true}).click();await expect(page.locator('#object-dialog')).not.toBeVisible();
  const doc=await save(page);expect(doc.semantics.variables.find((v:any)=>v.quantity==='charge')).toMatchObject({value:-1e-6,state:'known',unit:'C'});const density=doc.semantics.variables.find((v:any)=>v.quantity==='density');expect(density).toMatchObject({symbol:'\\rho_{P}',state:'unknown',unit:'kg/m^3'});
- const g=doc.presentation.elements[0],box=(await page.locator('.konvajs-content').boundingBox())!,scale=box.width/doc.presentation.canvas.width;
- const start={x:box.x+(g.x+14)*scale,y:box.y+g.y*scale};await gesture(page,info.project.name==='mobile',start,{x:start.x+60*scale,y:start.y+40*scale});expect((await save(page)).presentation.elements[0].x).not.toBe(g.x);
+ const g=doc.presentation.elements[0],box=(await page.locator('.konvajs-content').boundingBox())!,view=await canvasView(page),scale=view.scale;
+ const start={x:view.x+(g.x+14)*scale,y:view.y+g.y*scale};await gesture(page,info.project.name==='mobile',start,{x:start.x+60*scale,y:start.y+40*scale});expect((await save(page)).presentation.elements[0].x).not.toBe(g.x);
  await page.getByTitle('Object',{exact:true}).click();await page.locator('#object-name').fill('Conflict');await page.locator('#mass-enabled').check();await expect(page.locator('#mass-symbol')).not.toBeVisible();await expect(page.locator('#mass-preview .katex')).toBeVisible();await page.getByRole('button',{name:'Cancel',exact:true}).click();expect((await save(page)).semantics.objects).toHaveLength(1);
  await page.locator('#elements-menu summary').click();await page.getByRole('button',{name:'Objects',exact:true}).click();await page.getByRole('button',{name:'Edit Particle',exact:true}).click();await page.locator('#charge-enabled').uncheck();await page.getByRole('button',{name:'Save object',exact:true}).click();await expect(page.locator('#object-dialog')).not.toBeVisible();const edited=await save(page);expect(edited.semantics.variables).toHaveLength(1);expect(edited.semantics.variables[0].id).toBe(density.id);
  await page.locator('#elements-menu summary').click();await page.getByRole('button',{name:'Objects',exact:true}).click();await page.getByRole('button',{name:'Delete Particle',exact:true}).click();await expect(page.getByRole('button',{name:'Select Particle',exact:true})).toHaveCount(0);await page.getByRole('button',{name:'Close',exact:true}).click();const empty=await save(page);expect(empty.semantics.objects).toHaveLength(0);expect(empty.semantics.variables).toHaveLength(0);expect(empty.presentation.elements).toHaveLength(0);

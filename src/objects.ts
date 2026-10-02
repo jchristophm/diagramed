@@ -98,7 +98,7 @@ export function saveObject(store: DocumentStore, draft: ObjectDraft): string {
   if(expected && graphic.kind!==expected)throw new Error('Representation does not match this object category.');
   if(graphic.kind==='surface'){graphic.fill=category==='fluid'?'rgba(65,150,240,0.3)':category==='planetSurface'?'#b8ac98':'#ddd';}
   graphic.visible = draft.representation !== 'none';
-  graphic.label = { ...graphic.label, ...(!graphic.label ? {placement:'objectCenter' as const}:{}), showName: draft.showName, showProperties: draft.showProperties, offsetX: graphic.label?.offsetX ?? 0, offsetY: graphic.label?.offsetY ?? 28 };
+  graphic.label = { ...graphic.label, ...(!graphic.label ? {placement:'objectCenter' as const}:{}), showName: draft.showName, showProperties: draft.showProperties, offsetX: graphic.label?.offsetX ?? 0, offsetY: graphic.label?.offsetY ?? (graphic.kind==='surface'?28-graphic.height/2:28) };
   next.metadata.updatedAt = new Date().toISOString(); synchronizeSymbols(next); assertExpressions(next); validateRelationships(next); store.replace(next); return id;
 }
 export function deleteObject(store: DocumentStore, id: string) {

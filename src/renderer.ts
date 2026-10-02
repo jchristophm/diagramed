@@ -1,3 +1,4 @@
+import {angleGeometry,angleSymbol,invalidAngleReason} from './angles';
 import Konva from 'konva';
 import { coordinateBasis, graphicalComponents, deleteCoordinates } from './coordinates';
 import { DocumentStore, type DiagramDocument, type Graphic } from './model';
@@ -7,6 +8,9 @@ import { vectorLatex } from './naming';
 import { attachmentPoint, labelPosition, effectiveLabel } from './geometry';
 export class DiagramRenderer {
   readonly stage: Konva.Stage;
+  private angleLayer = new Konva.Layer();
+  private angleRevision = 0;
+  onAngleEdit: (id:string) => void = () => {};
   private grid = new Konva.Layer({ listening: false });
   private layer = new Konva.Layer();
   private controls = new Konva.Layer();
@@ -36,7 +40,7 @@ export class DiagramRenderer {
   constructor(private store: DocumentStore, private container: HTMLDivElement) {
     this.viewport = container.parentElement!; this.extent = document.querySelector<HTMLElement>('#document-extent')!;
     this.stage = new Konva.Stage({ container, width: 800, height: 600 });
-    this.stage.add(this.grid, this.layer, this.components, this.coordinates, this.origins, this.controls);
+    this.stage.add(this.grid, this.layer, this.components, this.coordinates, this.origins, this.angleLayer, this.controls);
     this.controls.add(this.transformer);
     this.stage.on('click tap', e => { if (e.target === this.stage) this.select(null); });
     new ResizeObserver(() => this.fit()).observe(this.viewport);
@@ -66,12 +70,20 @@ export class DiagramRenderer {
     }
     this.applyView();
   }
+  private styleTransformer() {
+    // Transformer chrome uses screen coordinates internally; make its visible
+    // dimensions track document zoom while retaining invisible handle targets.
+    this.transformer.anchorSize(12*this.zoom);this.transformer.padding(4*this.zoom);
+    this.transformer.borderStrokeWidth(this.zoom);this.transformer.anchorStrokeWidth(this.zoom);
+    this.transformer.rotateAnchorOffset(50*this.zoom);this.transformer.forceUpdate();
+    this.transformer.find<Konva.Rect>('._anchor').forEach(anchor=>anchor.hitStrokeWidth(20));
+  }
   private applyView() {
     const {minX=0,minY=0}=this.store.document.presentation.canvas;
     this.stage.scale({x:this.zoom,y:this.zoom});
     this.stage.position({x:-minX*this.zoom-this.viewport.scrollLeft,y:-minY*this.zoom-this.viewport.scrollTop});
-    this.stage.find<Konva.Shape>('Shape').forEach(shape => {if(shape.getAttr('hitStrokeWidth') !== undefined && shape.getAttr('hitStrokeWidth') !== 'auto')shape.hitStrokeWidth(Math.max(shape.strokeWidth(),20/this.zoom));});
-    this.stage.batchDraw();this.onViewChange();
+    this.stage.find<Konva.Shape>('Shape').forEach(shape => {if(!shape.hasName('_anchor') && (shape instanceof Konva.Line || shape instanceof Konva.Circle || shape instanceof Konva.Rect) && shape.getAttr('hitStrokeWidth') !== undefined && shape.getAttr('hitStrokeWidth') !== 'auto')shape.hitStrokeWidth(Math.max(shape.strokeWidth(),20/this.zoom));});
+    this.styleTransformer();this.stage.batchDraw();this.onViewChange();
   }
   setZoom(value:number, focal={x:this.viewport.clientWidth/2,y:this.viewport.clientHeight/2}) {
     const {minX=0,minY=0}=this.store.document.presentation.canvas;
@@ -110,7 +122,7 @@ export class DiagramRenderer {
     for (const e of [...elements.filter(e=>e.kind==='surface'),...elements.filter(e=>e.kind!=='surface')]) await this.addNode(e);
     this.renderCoordinates();this.refreshOrigins(this.store.document);this.fit();
     if(previousActiveVector && this.nodes.has(previousActiveVector)){this.activeVectorId=previousActiveVector;await this.refreshComponents();}
-    this.stage.draw();
+    await this.renderAngles();this.stage.draw();
   }
   async addNode(record: Graphic) {
     let e=record; if(e.vectorId){const v=this.store.document.semantics.vectors.find(v=>v.id===e.vectorId);if(!v)return;const shown=displayedVector(this.store.document,v,e);if(!shown)return;e=shown;}
@@ -120,7 +132,7 @@ export class DiagramRenderer {
     if(e.vectorId && isZeroMotionVector(this.store.document,this.store.document.semantics.vectors.find(v=>v.id===e.vectorId)!)){node=new Konva.Circle({...base,name:'zero-motion-anchor',radius:0,visible:false,listening:false});}
     else if(e.kind==='surface'){
       node=new Konva.Rect({...base,width:e.width,height:e.height,draggable:true});
-      node.hitFunc((context,shape)=>{context.beginPath();context.rect(0,-10,e.width,20);context.closePath();context.fillStrokeShape(shape);});
+      node.hitFunc((context,shape)=>{context.beginPath();context.rect(0,-12/this.zoom,e.width,24/this.zoom);context.closePath();context.fillStrokeShape(shape);});
       const physical=this.store.document.semantics.objects.find(o=>o.id===e.semanticId);
       if(physical?.category==='chargedPlate')node.sceneFunc((context,shape)=>{const rect=shape as Konva.Rect;context.beginPath();context.rect(0,0,rect.width(),rect.height());context.closePath();context.fillStrokeShape(shape);context.setAttr('fillStyle','#555');context.setAttr('font','18px Arial');for(let x=20;x<rect.width();x+=40)context.fillText(physical.polarity==='negative'?'−':'+',x,24);});
     }
@@ -168,6 +180,7 @@ export class DiagramRenderer {
     let text:Konva.Text|undefined;
     if(e.label.showName && object){text=new Konva.Text({text:object.name+(symbols?', ':''),fontSize:16,fontFamily:'Arial',fill:'#222',hitStrokeWidth:8});group.add(text);}
     if(symbols){const image=await renderMath(symbols,16);group.add(new Konva.Image({image,width:image.width/2,height:image.height/2,x:text?.width()||0,y:0,math:symbols}));if(text)text.y(Math.max(0,(image.height/2-text.height())/2));}
+    group.getChildren().forEach(child=>{if(child instanceof Konva.Shape)child.hitFunc((context,shape)=>{context.beginPath();context.rect(0,0,Math.max(child.width(),30/this.zoom),Math.max(child.height(),20/this.zoom));context.closePath();context.fillStrokeShape(shape);});});
     this.labels.set(e.id, group); this.layer.add(group); this.positionLabel(e.id);
     group.on('click tap', () => this.select(e.id));
     group.on('dblclick dbltap', () => this.onEdit(this.element(e.id)!));
@@ -177,7 +190,7 @@ export class DiagramRenderer {
   private refreshAttachments(){
     const doc=structuredClone(this.store.document);for(const g of doc.presentation.elements)if(g.semanticId && this.nodes.has(g.id))Object.assign(g,this.currentGraphic(g.id));
     for(const g of doc.presentation.elements){if(!g.vectorId)continue;const v=doc.semantics.vectors.find(v=>v.id===g.vectorId),node=this.nodes.get(g.id);if(!v||!node)continue;const current=displayedVector(doc,v,g);if(!current)continue;node.position({x:current.x,y:current.y});if(node instanceof Konva.Line)node.points(current.points);this.positionLabel(g.id);}
-    this.refreshOrigins(doc); void this.refreshComponents();
+    this.refreshOrigins(doc); void this.refreshComponents();void this.renderAngles(doc);
   }
   private refreshOrigins(doc:DiagramDocument){
     this.origins.destroyChildren();const counts=new Map<string,number>();
@@ -187,6 +200,7 @@ export class DiagramRenderer {
   }
   private element(id: string) { return this.store.document.presentation.elements.find(e => e.id === id); }
   select(id: string | null) {
+    this.angleLayer.find<Konva.Shape>('.angle-arc').forEach(n=>n.stroke(n.getAttr('angleId')===id?'orange':'#735889'));
     const old = this.selectedId && this.nodes.get(this.selectedId);
     if (old) { const e = this.element(this.selectedId!); if (e && !['text', 'latex'].includes(e.kind)) old.stroke(e.stroke); old.draggable(!e?.vectorId); }
     this.controls.destroyChildren(); this.transformer = new Konva.Transformer({ rotateEnabled: true, ignoreStroke: true, padding: 4, anchorSize: 12 }); this.controls.add(this.transformer);
@@ -197,6 +211,7 @@ export class DiagramRenderer {
     void this.refreshComponents();
     this.onSelect(id ? this.element(id) || null : null);
     if (!id) { this.stage.batchDraw(); return; }
+    if(this.store.document.semantics.angles?.some(a=>a.id===id)){this.stage.batchDraw();return;}
     if (this.store.document.semantics.coordinateSystems.some(c => c.id === id)) { this.coordinateHandles(); this.stage.batchDraw(); return; }
     const e = this.element(id), node = this.nodes.get(id);
     if (!e || !node) return;
@@ -225,7 +240,7 @@ export class DiagramRenderer {
       if (e.kind !== 'text' && e.kind !== 'latex') node.stroke('orange');
       this.transformer.keepRatio(e.kind !== 'rectangle');
       if (e.kind === 'circle' && e.semanticId) this.transformer.enabledAnchors(['top-left','top-right','bottom-left','bottom-right']);
-      this.transformer.nodes([node]);
+      this.transformer.nodes([node]);this.styleTransformer();
     }
     this.stage.batchDraw();
   }
@@ -249,7 +264,7 @@ export class DiagramRenderer {
     // Only the origin drags the frame; vector/object nodes are independent.
     origin.draggable(true);
     origin.on('dragstart',()=>this.select(system.id));
-    origin.on('dragmove',()=>{system.origin=[group.x()+origin.x(),group.y()+origin.y()];group.position({x:system.origin[0],y:system.origin[1]});origin.position({x:0,y:0});this.store.changed();this.select(system.id);});
+    origin.on('dragmove',()=>{system.origin=[group.x()+origin.x(),group.y()+origin.y()];group.position({x:system.origin[0],y:system.origin[1]});origin.position({x:0,y:0});this.store.changed();void this.renderAngles();this.select(system.id);});
     this.historyGesture(origin);this.coordinates.add(group);
   }
   private coordinateHandles() {
@@ -257,7 +272,7 @@ export class DiagramRenderer {
     const basis=coordinateBasis(system.angle),distance=105;
     const handle=new Konva.Circle({name:'coordinate-rotation-handle',x:system.origin[0]+basis.x[0]*distance,y:system.origin[1]+basis.x[1]*distance,radius:8,fill:'#ff0',stroke:'#42566b',hitStrokeWidth:24,draggable:true});
     handle.hitFunc((context,shape)=>{context.beginPath();context.arc(0,0,22/(this.stage.scaleX()||1),0,Math.PI*2);context.closePath();context.fillStrokeShape(shape);});
-    handle.on('dragmove',()=>{const dx=handle.x()-system.origin[0],dy=handle.y()-system.origin[1];if(Math.hypot(dx,dy)<1)return;system.angle=Math.atan2(-dy,dx)*180/Math.PI;this.store.changed();this.renderCoordinates();void this.refreshComponents();this.stage.batchDraw();});
+    handle.on('dragmove',()=>{const dx=handle.x()-system.origin[0],dy=handle.y()-system.origin[1];if(Math.hypot(dx,dy)<1)return;system.angle=Math.atan2(-dy,dx)*180/Math.PI;this.store.changed();this.renderCoordinates();void this.refreshComponents();void this.renderAngles();this.stage.batchDraw();});
     handle.on('dragend',()=>this.select(system.id));this.historyGesture(handle);this.controls.add(handle);
   }
   private async refreshComponents() {
@@ -279,6 +294,30 @@ export class DiagramRenderer {
     }
     if(revision!==this.componentRevision){group.destroy();return;}
     this.components.add(group);this.components.batchDraw();
+  }
+  private async renderAngles(doc=this.store.document) {
+    const revision=++this.angleRevision;
+    const nodes:Konva.Group[]=[];const warnings:string[]=[];
+    for(const a of doc.semantics.angles??[]){
+      const reason=invalidAngleReason(doc,a);if(reason){warnings.push(reason);continue;}if(!a.visible)continue;
+      const geometry=angleGeometry(doc,a)!;const {start,sweep}=geometry,radius=42;
+      const group=new Konva.Group({id:a.id,name:'semantic-angle',x:a.presentation.x,y:a.presentation.y,draggable:true});
+      const rays=new Konva.Line({points:[55*Math.cos(start),-55*Math.sin(start),0,0,55*Math.cos(start+sweep),-55*Math.sin(start+sweep)],stroke:'#735889',opacity:.45,strokeWidth:1,dash:[3,4],listening:false});group.add(rays);
+      const arc=new Konva.Shape({name:'angle-arc',angleId:a.id,stroke:this.selectedId===a.id?'orange':'#735889',strokeWidth:2,hitStrokeWidth:22/this.zoom,
+        sceneFunc:(context,shape)=>{context.beginPath();context.arc(0,0,radius,-start,-start-sweep,sweep>0);context.strokeShape(shape);}});group.add(arc);
+      if(Math.abs(sweep)>.05){const end=start+sweep,previous=end-Math.sign(sweep)*.12;group.add(new Konva.Arrow({name:'angle-arrowhead',points:[radius*Math.cos(previous),-radius*Math.sin(previous),radius*Math.cos(end),-radius*Math.sin(end)],stroke:'#735889',fill:'#735889',strokeWidth:2,pointerLength:6,pointerWidth:6,listening:false}));}
+      const symbol=angleSymbol(doc,a)+(a.value===undefined?'':`=${a.value}^\\circ`),img=await renderMath(symbol,16);
+      const mid=start+sweep/2,anchor={x:65*Math.cos(mid)-img.width/4,y:-65*Math.sin(mid)-img.height/4};
+      const label=new Konva.Image({name:'angle-label',math:symbol,image:img,width:img.width/2,height:img.height/2,x:anchor.x+a.presentation.labelOffset[0],y:anchor.y+a.presentation.labelOffset[1],draggable:true});group.add(label);
+      group.on('click tap',()=>this.select(a.id));group.on('dblclick dbltap',()=>this.onAngleEdit(a.id));
+      group.on('dragmove',()=>group.position({x:this.snap(group.x()),y:this.snap(group.y())}));
+      group.on('dragend',event=>{if(event.target!==group)return;const record=this.store.document.semantics.angles?.find(n=>n.id===a.id);if(record){record.presentation.x=group.x();record.presentation.y=group.y();this.store.changed();}this.select(a.id);});
+      label.on('dragstart',event=>{event.cancelBubble=true;});label.on('dragend',event=>{event.cancelBubble=true;const record=this.store.document.semantics.angles?.find(n=>n.id===a.id);if(record){record.presentation.labelOffset=[label.x()-anchor.x,label.y()-anchor.y];this.store.changed();}this.select(a.id);});
+      this.historyGesture(group);this.historyGesture(label);nodes.push(group);
+    }
+    if(revision!==this.angleRevision){nodes.forEach(n=>n.destroy());return;}
+    this.angleLayer.destroyChildren();nodes.forEach(n=>this.angleLayer.add(n));this.angleLayer.batchDraw();
+    const warning=document.querySelector<HTMLElement>('#angle-warning');if(warning){warning.hidden=!warnings.length;warning.textContent=warnings.length?`${warnings.length} angle(s) need attention. Open Elements → Angles to edit or delete them.`:'';}
   }
   toggleGrid() { const p = this.store.document.presentation; p.grid.visible = !p.grid.visible; this.grid.visible(p.grid.visible); this.store.changed(); this.stage.draw(); }
 }

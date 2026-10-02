@@ -27,6 +27,6 @@ export function initializeCoordinates(store: DocumentStore, renderer: DiagramRen
       await renderer.render();renderer.select(id);dialog.close();
     } catch(error){$('#coordinate-error').textContent=(error as Error).message;}
   });
-  $('#delete-coordinates').addEventListener('click',async()=>{deleteCoordinates(store);await renderer.render();dialog.close();});
+  $('#delete-coordinates').addEventListener('click',async()=>{try{deleteCoordinates(store);await renderer.render();dialog.close();}catch(error){$('#coordinate-error').textContent=(error as Error).message;}});
   return {open};
 }

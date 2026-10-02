@@ -1,0 +1,41 @@
+import {test,expect} from './test-fixture';
+import {DocumentStore} from '../../src/model';
+import {saveObject} from '../../src/objects';
+import {saveVector} from '../../src/physics';
+import {saveCoordinates} from '../../src/coordinates';
+import {readFile} from 'node:fs/promises';
+async function saved(page:any){const p=page.waitForEvent('download');await page.getByTitle('Download JSON').click();return JSON.parse(await readFile((await(await p).path())!,'utf8'));}
+function fixture(){const s=new DocumentStore(),b=saveObject(s,{name:'Book',representation:'circle',showName:true,showProperties:true}),v=saveVector(s,{kind:'velocity',targetId:b,magnitude:{state:'unknown',unit:'m/s'},angle:-30});const c=saveCoordinates(s,{dimensions:2,angle:0,origin:[0,100]});return {s,v,c};}
+const ref=(c:string,axis:string,sign=1)=>JSON.stringify({type:'axis',coordinateSystemId:c,axis,sign});
+async function load(page:any,doc:any){await page.locator('#file-input').setInputFiles({name:'angles.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(doc))});await expect(page.locator('#status')).toContainText('Opened');}
+async function collection(page:any){await page.locator('#elements-menu summary').click();await page.locator('#elements-menu [data-action="angles"]').click();}
+test('Angle modal controls full vectors, signed components and signed axes with automatic read-only names',async({page},info)=>{
+ const {s,v,c}=fixture();await page.goto('./');await load(page,s.document);await page.getByTitle('Add Angle',{exact:true}).click();
+ expect(await page.locator('#angle-from option').count()).toBe(8);expect(await page.locator('#angle-to option').count()).toBe(8);await expect(page.locator('#save-angle')).toBeDisabled();expect(await page.locator('#angle-dialog input:not([type=checkbox])').count()).toBe(1);
+ await page.locator('#angle-from').selectOption(ref(c,'x'));await page.locator('#angle-to').selectOption(ref(c,'y'));await expect(page.locator('#angle-symbol .katex')).toBeVisible();await page.locator('#save-angle').click();await expect(page.locator('#angle-dialog')).not.toBeVisible();
+ const doc=await saved(page),a=doc.semantics.angles[0];expect(a).not.toHaveProperty('value');expect(a.from).toEqual({type:'axis',coordinateSystemId:c,axis:'x',sign:1});
+ const view=await page.evaluate(()=>{const s=(window as any).Konva.stages[0];return {math:s.findOne('.angle-label').getAttr('math'),count:s.find('.semantic-angle').length};});expect(view).toEqual({math:'\\theta_{{+x},{+y}}',count:1});
+ await collection(page);await page.locator('#angle-list button').filter({hasText:'Edit'}).click();await page.locator('#angle-from').selectOption(JSON.stringify({type:'component',vectorId:v,coordinateSystemId:c,axis:'y'}));await page.locator('#angle-to').selectOption(ref(c,'x',-1));await page.locator('#angle-value').fill('-30');await page.locator('#angle-visible').uncheck();await page.locator('#save-angle').click();await expect(page.locator('#angle-dialog')).not.toBeVisible();
+ const hidden=await saved(page);expect(hidden.semantics.angles[0]).toMatchObject({id:a.id,value:-30,visible:false});expect(await page.evaluate(()=>(window as any).Konva.stages[0].find('.semantic-angle').length)).toBe(0);
+ await page.getByTitle('Undo',{exact:true}).click();expect(await saved(page)).toEqual(doc);await page.getByTitle('Redo',{exact:true}).click();expect(await saved(page)).toEqual(hidden);
+ await page.reload();await load(page,hidden);expect(await saved(page)).toEqual(hidden);await collection(page);await page.locator('#angle-list button').filter({hasText:'Edit'}).click();await page.locator('#angle-visible').check();await page.locator('#save-angle').click();await expect(page.locator('#angle-dialog')).not.toBeVisible();
+ await page.getByRole('button',{name:'Zoom in',exact:true}).click();await page.screenshot({path:`test-results/angle-${info.project.name}.png`});
+});
+test('undefined directions are explicit, dependencies are protected and repaired references persist',async({page})=>{
+ const {s,v,c}=fixture();await page.goto('./');await load(page,s.document);await page.getByTitle('Add Angle',{exact:true}).click();await page.locator('#angle-from').selectOption(ref(c,'x'));await page.locator('#angle-to').selectOption(JSON.stringify({type:'vector',vectorId:v}));await page.locator('#save-angle').click();await expect(page.locator('#angle-dialog')).not.toBeVisible();const doc=await saved(page);
+ await page.getByTitle('Coordinates',{exact:true}).click();await page.locator('#delete-coordinates').click();await expect(page.locator('#coordinate-error')).toContainText('dependent angles');await page.locator('#cancel-coordinates').click();
+ const bad=structuredClone(doc);bad.presentation.elements.find((g:any)=>g.vectorId===v).points=[0,0,0,0];await load(page,bad);await expect(page.locator('#angle-warning')).toBeVisible();await collection(page);await expect(page.locator('#angle-list')).toContainText('undefined');await page.locator('#angle-list button').filter({hasText:'Edit'}).click();await expect(page.locator('#save-angle')).toBeDisabled();await page.locator('#angle-to').selectOption(ref(c,'y'));await page.locator('#save-angle').click();await expect(page.locator('#angle-dialog')).not.toBeVisible();await expect(page.locator('#angle-warning')).not.toBeVisible();
+ await collection(page);await page.locator('#angle-list button').filter({hasText:'Delete'}).click();await page.locator('#close-angles').click();expect((await saved(page)).semantics.angles).toEqual([]);
+});
+test('angle arc and label drag in document coordinates and undo as individual edits',async({page},info)=>{
+ const {s,c}=fixture();await page.goto('./');await load(page,s.document);await page.getByTitle('Add Angle',{exact:true}).click();await page.locator('#angle-from').selectOption(ref(c,'x'));await page.locator('#angle-to').selectOption(ref(c,'y'));await page.locator('#save-angle').click();await expect(page.locator('#angle-dialog')).not.toBeVisible();
+ const original=await saved(page);
+ async function drag(start:{x:number;y:number},end:{x:number;y:number}){if(info.project.name==='mobile'){const cd=await page.context().newCDPSession(page);await cd.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[start]});for(let i=1;i<=10;i++)await cd.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:start.x+(end.x-start.x)*i/10,y:start.y+(end.y-start.y)*i/10}]});await cd.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await cd.detach();}else{await page.mouse.move(start.x,start.y);await page.mouse.down();await page.mouse.move(end.x,end.y,{steps:10});await page.mouse.up();}}
+ await page.getByRole('button',{name:'Zoom in',exact:true}).click();
+ await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+ const arc=await page.evaluate(()=>{const s=(window as any).Konva.stages[0],r=s.container().getBoundingClientRect(),p=s.getAbsoluteTransform().point({x:42/Math.sqrt(2),y:-42/Math.sqrt(2)});return {x:r.left+p.x,y:r.top+p.y};});
+ await drag(arc,{x:arc.x-50,y:arc.y+50});const moved=await saved(page);expect(moved.semantics.angles[0].presentation).toMatchObject({x:-40,y:40});
+ const label=await page.evaluate(()=>{const s=(window as any).Konva.stages[0],r=s.container().getBoundingClientRect(),p=s.findOne('.angle-label').getClientRect();return {x:r.left+p.x+p.width/2,y:r.top+p.y+p.height/2};});await drag(label,{x:label.x+50,y:label.y+25});const adjusted=await saved(page);expect(adjusted.semantics.angles[0].presentation.labelOffset[0]).toBeCloseTo(40);expect(adjusted.semantics.angles[0].presentation.labelOffset[1]).toBeCloseTo(20);
+ await page.getByTitle('Undo',{exact:true}).click();expect(await saved(page)).toEqual(moved);await page.getByTitle('Undo',{exact:true}).click();expect(await saved(page)).toEqual(original);await page.getByTitle('Redo',{exact:true}).click();await page.getByTitle('Redo',{exact:true}).click();expect(await saved(page)).toEqual(adjusted);
+ await collection(page);await page.locator('#angle-list button').filter({hasText:'Select'}).click();await page.keyboard.press('Delete');expect((await saved(page)).semantics.angles).toEqual([]);await page.getByTitle('Undo',{exact:true}).click();expect((await saved(page)).semantics.angles).toEqual(adjusted.semantics.angles);
+});
