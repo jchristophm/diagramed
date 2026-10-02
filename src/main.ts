@@ -10,7 +10,7 @@ import { saveObject, deleteObject, objectDraft, objectGraphic, setObjectVisibili
 import type { ObjectCategory } from './semantics';
 const $ = <T extends HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
 const container = $<HTMLDivElement>('#container');
-const store = new DocumentStore(newDocument(container.clientWidth || 800, container.clientHeight || 600));
+const store = new DocumentStore(newDocument());
 const renderer = new DiagramRenderer(store, container);
 const vectorUI=initializeVectors(store,renderer);
 const coordinateUI=initializeCoordinates(store,renderer);
@@ -115,6 +115,9 @@ async function action(name: string) {
     else if (name === 'collection') showCollection();
     else if (name === 'coordinates') coordinateUI.open();
     else if (name === 'edit') {const g=store.document.presentation.elements.find(e=>e.id===renderer.selectedId);if(g?.vectorId){vectorUI.open(g.vectorId);return;} const id = selectedObject(); if (id) openObject(id); else report('Select an object to edit its definition.'); }
+    else if (name === 'zoom-in') renderer.setZoom(renderer.zoom + .25);
+    else if (name === 'zoom-out') renderer.setZoom(renderer.zoom - .25);
+    else if (name === 'zoom-reset') renderer.setZoom(1);
     else if (name === 'grid') renderer.toggleGrid();
     else if (name === 'undo' || name === 'redo') {busy=true;try{if(name==='undo'?store.undo():store.redo()){selectedObjectId=undefined;await renderer.render();}}finally{busy=false;}}
     else if (name === 'download') {downloadDocument(store.document);store.markSaved();}
@@ -153,6 +156,11 @@ $<HTMLInputElement>('#file-input').addEventListener('change',async event=>{
 });
 document.addEventListener('click',event=>{if(!$("#elements-menu").contains(event.target as Node))$<HTMLDetailsElement>('#elements-menu').open=false;});
 document.addEventListener('keydown',event=>{if(event.key==='Escape')$<HTMLDetailsElement>('#elements-menu').open=false;});
+renderer.onViewChange = () => {
+ $('[data-action="zoom-reset"]').textContent = `${Math.round(renderer.zoom * 100)}%`;
+ $<HTMLButtonElement>('[data-action="zoom-in"]').disabled = renderer.zoom >= 2;
+ $<HTMLButtonElement>('[data-action="zoom-out"]').disabled = renderer.zoom <= .5;
+};
 void renderer.render().catch(report);
 
 function refreshPropertyPreview(){refreshPropertySymbols($('#property-fields'),store.document,$<HTMLInputElement>('#object-name').value,$<HTMLSelectElement>('#object-type').value as ObjectCategory,editingId);}

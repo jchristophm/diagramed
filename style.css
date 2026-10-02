@@ -135,3 +135,12 @@ fieldset { margin:12px 0; padding:0 12px 12px; border:1px solid #ddd; border-rad
 #toolbar-bottom > button[aria-pressed="true"] { background:#dce8f2; border-color:#728da3; }
 [id^="toolbar"] button:disabled { opacity:.45; cursor:default; }
 @media(max-width:600px){#toolbar-bottom { gap:6px; padding:0 6px; } #toolbar-bottom > button { min-width:48px; padding:2px 6px; } #toolbar-bottom .toolbar-icon { width:18px; height:18px; }}
+
+/* Only the viewport allocates drawing buffers; the spacer provides native scrollbars. */
+#main-canvas { display:block; overscroll-behavior:contain; }
+#document-extent { position:absolute; top:0; left:0; pointer-events:none; }
+#container { position:sticky; top:0; left:0; width:100%; height:100%; border:0; }
+#zoom-controls { display:flex; gap:2px; }
+#zoom-controls button { padding:2px 6px; min-width:32px; height:44px; }
+#zoom-controls [data-action="zoom-reset"] { min-width:54px; font-variant-numeric:tabular-nums; }
+@media(max-width:600px){#toolbar-bottom{gap:3px;padding:0 3px;}#toolbar-bottom>button{min-width:40px;padding:2px 4px;}#zoom-controls button{min-width:28px;padding:2px 3px;}#zoom-controls [data-action="zoom-reset"]{min-width:48px;}}

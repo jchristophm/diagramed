@@ -80,7 +80,7 @@ export function saveObject(store: DocumentStore, draft: ObjectDraft): string {
   let graphic = next.presentation.elements.find(e => e.semanticId === id);
   if (!graphic) {
     graphic = newGraphic(draft.representation === 'none' ? (['planetSurface','chargedPlate','fluid'].includes(category)?'surface':category==='spring'?'spring':category==='cable'?'cable':'circle') : draft.representation, next);
-    if(graphic.kind==='surface'){graphic.x=0;graphic.y=next.presentation.canvas.height*.72;graphic.width=next.presentation.canvas.width;graphic.height=next.presentation.canvas.height-graphic.y;}
+    if(graphic.kind==='surface'){graphic.x=next.presentation.canvas.minX??0;graphic.y=next.presentation.canvas.coordinateSpace?160:next.presentation.canvas.height*.72;graphic.width=next.presentation.canvas.width;graphic.height=(next.presentation.canvas.minY??0)+next.presentation.canvas.height-graphic.y;}
     if(['spring','cable'].includes(graphic.kind))graphic.points=[-80,0,80,0];
     graphic.semanticId = id; graphic.stroke = '#333'; graphic.fill = 'transparent';
     next.presentation.elements.push(graphic);
@@ -96,7 +96,7 @@ export function saveObject(store: DocumentStore, draft: ObjectDraft): string {
   else graphic.fill = 'transparent';
   const expected = ['planetSurface','chargedPlate','fluid'].includes(category)?'surface':category==='spring'?'spring':category==='cable'?'cable':category==='spatialPoint'?'point':undefined;
   if(expected && graphic.kind!==expected)throw new Error('Representation does not match this object category.');
-  if(graphic.kind==='surface'){graphic.x=0;graphic.width=next.presentation.canvas.width;graphic.height=next.presentation.canvas.height-graphic.y;graphic.fill=category==='fluid'?'rgba(65,150,240,0.3)':category==='planetSurface'?'#b8ac98':'#ddd';}
+  if(graphic.kind==='surface'){graphic.fill=category==='fluid'?'rgba(65,150,240,0.3)':category==='planetSurface'?'#b8ac98':'#ddd';}
   graphic.visible = draft.representation !== 'none';
   graphic.label = { ...graphic.label, ...(!graphic.label ? {placement:'objectCenter' as const}:{}), showName: draft.showName, showProperties: draft.showProperties, offsetX: graphic.label?.offsetX ?? 0, offsetY: graphic.label?.offsetY ?? 28 };
   next.metadata.updatedAt = new Date().toISOString(); synchronizeSymbols(next); assertExpressions(next); validateRelationships(next); store.replace(next); return id;

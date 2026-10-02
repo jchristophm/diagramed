@@ -16,16 +16,17 @@ export interface DiagramDocument {
   format: 'diagramed'; version: 3; id: string;
   metadata: { title: string; createdAt: string; updatedAt: string };
   semantics: Semantics;
-  presentation: { canvas: { width: number; height: number }; grid: { size: number; visible: boolean }; elements: Graphic[] };
+  presentation: { canvas: { width: number; height: number; minX?: number; minY?: number; coordinateSpace?: 'grid' }; grid: { size: number; visible: boolean }; elements: Graphic[] };
 }
-export function newDocument(width = 800, height = 600): DiagramDocument {
+export function newDocument(width = 3200, height = 2400): DiagramDocument {
   const now = new Date().toISOString();
-  return { format: 'diagramed', version: 3, id: crypto.randomUUID(), metadata: { title: 'Untitled diagram', createdAt: now, updatedAt: now }, semantics: emptySemantics(), presentation: { canvas: { width, height }, grid: { size: 20, visible: true }, elements: [] } };
+  return { format: 'diagramed', version: 3, id: crypto.randomUUID(), metadata: { title: 'Untitled diagram', createdAt: now, updatedAt: now }, semantics: emptySemantics(), presentation: { canvas: { width, height, minX: -width / 2, minY: -height / 2, coordinateSpace: 'grid' }, grid: { size: 10, visible: true }, elements: [] } };
 }
 export function newGraphic(kind: ElementKind, doc: DiagramDocument): Graphic {
   const { width, height } = doc.presentation.canvas;
   const snap = (v: number) => Math.round(v / doc.presentation.grid.size) * doc.presentation.grid.size;
-  const x = snap(width / 2), y = snap(height / 2);
+  const offset = (doc.presentation.elements.filter(e => e.semanticId).length % 8) * doc.presentation.grid.size;
+  const x = snap(doc.presentation.canvas.coordinateSpace ? offset : width / 2), y = snap(doc.presentation.canvas.coordinateSpace ? offset : height / 2);
   return { id: crypto.randomUUID(), kind, x: kind === 'rectangle' ? x - 20 : x, y: kind === 'rectangle' ? y - 20 : y,
     rotation: 0, scaleX: 1, scaleY: 1, width: 40, height: 40, radius: 20,
     points: kind === 'dashedArrow' ? [0, 0, 0, -80] : kind === 'line' ? [-80, 0, 80, 0] : [0, 0, 80, 0],

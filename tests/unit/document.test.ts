@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DocumentStore, newDocument, newGraphic, type ElementKind } from '../../src/model';
-import { parseDocument, serializeDocument } from '../../src/persistence';
+import { parseDocument, serializeDocument, migrateDocumentSpace } from '../../src/persistence';
 import { readFileSync } from 'node:fs';
 import { saveObject, objectDraft } from '../../src/objects';
 describe('native documents', () => {
@@ -8,7 +8,7 @@ describe('native documents', () => {
     const legacy = JSON.parse(readFileSync('examples/representative.diagramed.json','utf8'));
     expect(legacy.version).toBe(1);
     const result = parseDocument(JSON.stringify(legacy)); expect(result.version).toBe(3);
-    expect(result.presentation).toEqual(legacy.presentation); expect(result.semantics).toEqual(legacy.semantics); expect(result.metadata).toEqual(legacy.metadata);
+    migrateDocumentSpace(legacy);expect(result.presentation).toEqual(legacy.presentation); expect(result.semantics).toEqual(legacy.semantics); expect(result.metadata).toEqual(legacy.metadata);
     expect(result.presentation.elements.every(e => e.semanticId === undefined)).toBe(true);
     expect(parseDocument(serializeDocument(result))).toEqual(result);
   });

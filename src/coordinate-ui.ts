@@ -23,7 +23,7 @@ export function initializeCoordinates(store: DocumentStore, renderer: DiagramRen
     event.preventDefault();try {
       const c=store.document.semantics.coordinateSystems[0],canvas=store.document.presentation.canvas;
       const text=$<HTMLInputElement>('#coordinate-angle').value.trim();if(!text)throw new Error('Enter a rotation angle.');
-      const id=saveCoordinates(store,{id:c?.id,dimensions:Number($<HTMLSelectElement>('#coordinate-dimensions').value) as 1|2,angle:Number(text),origin:c?.origin??[canvas.width/2,canvas.height/2],visible:$<HTMLInputElement>('#coordinate-visible').checked,reverseX:$<HTMLInputElement>('#coordinate-reverse-x').checked,reverseY:$<HTMLInputElement>('#coordinate-reverse-y').checked});
+      const id=saveCoordinates(store,{id:c?.id,dimensions:Number($<HTMLSelectElement>('#coordinate-dimensions').value) as 1|2,angle:Number(text),origin:c?.origin??[0,0],visible:$<HTMLInputElement>('#coordinate-visible').checked,reverseX:$<HTMLInputElement>('#coordinate-reverse-x').checked,reverseY:$<HTMLInputElement>('#coordinate-reverse-y').checked});
       await renderer.render();renderer.select(id);dialog.close();
     } catch(error){$('#coordinate-error').textContent=(error as Error).message;}
   });

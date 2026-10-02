@@ -23,6 +23,9 @@ export function parseDocument(text: string): DiagramDocument {
   const metadata = object(d.metadata, 'metadata'); for (const key of ['title', 'createdAt', 'updatedAt']) string(metadata[key], `metadata.${key}`);
   const p = object(d.presentation, 'presentation'), c = object(p.canvas, 'canvas'), g = object(p.grid, 'grid');
   for (const key of ['width', 'height']) { number(c[key], `canvas.${key}`, true); if ((c[key] as number) > 10000) fail('canvas dimensions exceed 10,000.'); }
+  if(c.coordinateSpace!==undefined && c.coordinateSpace!=='grid')fail('unsupported document coordinate space.');
+  for(const key of ['minX','minY'])if(c[key]!==undefined)number(c[key],`canvas.${key}`);
+  if(c.coordinateSpace==='grid' && (c.minX===undefined || c.minY===undefined))fail('document bounds are incomplete.');
   number(g.size, 'grid.size', true); if (typeof g.visible !== 'boolean') fail('grid visibility must be true or false.');
   if (Math.ceil((c.width as number) / (g.size as number)) + Math.ceil((c.height as number) / (g.size as number)) > 10000) fail('grid has too many lines.');
   const ids = new Set<string>();
@@ -90,6 +93,7 @@ export function parseDocument(text: string): DiagramDocument {
   validateRelationships(result);
   repairContactNotation(result);
   validateRelationships(result);
+  migrateDocumentSpace(result);
   return result;
 }
 export function validateRelationships(doc: DiagramDocument) {
@@ -111,7 +115,7 @@ export function validateRelationships(doc: DiagramDocument) {
     if (graphics.length !== 1) fail('each physical object requires exactly one saved graphical configuration, including hidden objects.');
     if (!['circle','rectangle','point','surface','spring','cable'].includes(graphics[0].kind) || typeof graphics[0].visible !== 'boolean' || !graphics[0].label) fail('object graphical configuration is incomplete or incompatible.');
   }
-  for(const physical of objects.values()){const g=doc.presentation.elements.find(e=>e.semanticId===physical.id)!; const expected=['planetSurface','chargedPlate','fluid'].includes(physical.category!)?'surface':physical.category==='spring'?'spring':physical.category==='cable'?'cable':physical.category==='spatialPoint'?'point':undefined;if(expected && g.kind!==expected)fail('incompatible category representation.');if(g.kind==='surface' && (g.x!==0 || g.width!==doc.presentation.canvas.width || g.y<0 || g.y>=doc.presentation.canvas.height || g.height!==doc.presentation.canvas.height-g.y || g.rotation!==0 || g.scaleX!==1 || g.scaleY!==1))fail('invalid anchored surface geometry.');const v=variables.get(physical.properties?.surfaceChargeDensity || '');if(v?.state==='known' && v.value!==0 && (v.value!<0)!==(physical.polarity==='negative'))fail('plate polarity contradicts surface charge density.');}
+  for(const physical of objects.values()){const g=doc.presentation.elements.find(e=>e.semanticId===physical.id)!; const expected=['planetSurface','chargedPlate','fluid'].includes(physical.category!)?'surface':physical.category==='spring'?'spring':physical.category==='cable'?'cable':physical.category==='spatialPoint'?'point':undefined;if(expected && g.kind!==expected)fail('incompatible category representation.');if(g.kind==='surface' && (g.rotation!==0 || g.scaleX!==1 || g.scaleY!==1))fail('invalid anchored surface geometry.');const v=variables.get(physical.properties?.surfaceChargeDensity || '');if(v?.state==='known' && v.value!==0 && (v.value!<0)!==(physical.polarity==='negative'))fail('plate polarity contradicts surface charge density.');}
   for (const variable of variables.values()) {
     const symbol = canonicalSymbol(variable.symbol); if (!symbol) fail('variable symbol cannot be empty.');
     if (variable.quantity && variable.symbol.length > 80) fail('property symbols must be at most 80 characters.');
@@ -158,4 +162,19 @@ export function downloadDocument(document: DiagramDocument) {
   const link = window.document.createElement('a'); link.href = url;
   link.download = `${document.metadata.title.replace(/[^a-z0-9_-]+/gi, '-').slice(0, 80) || 'diagram'}.diagramed.json`;
   try { link.click(); } finally { setTimeout(() => URL.revokeObjectURL(url), 1000); }
+}
+
+/** Legacy pixels become fixed logical units, preserving all lengths and proportions.
+ * One fine grid interval is ten logical units. Translation alone relocates the
+ * historical spawn center to (0,0); no length, label offset or endpoint is scaled.
+ */
+export function migrateDocumentSpace(doc: DiagramDocument) {
+ const canvas=doc.presentation.canvas;
+ if(canvas.coordinateSpace==='grid')return;
+ const cx=canvas.width/2,cy=canvas.height/2;
+ for(const g of doc.presentation.elements){g.x-=cx;g.y-=cy;}
+ for(const c of doc.semantics.coordinateSystems){c.origin=[c.origin[0]-cx,c.origin[1]-cy];}
+ canvas.width=Math.max(3200,canvas.width);canvas.height=Math.max(2400,canvas.height);
+ canvas.minX=-canvas.width/2;canvas.minY=-canvas.height/2;canvas.coordinateSpace='grid';
+ doc.presentation.grid.size=Math.min(10,doc.presentation.grid.size);
 }

@@ -27,12 +27,23 @@ export class DiagramRenderer {
     const object = doc.semantics.objects.find(o => o.id === e.semanticId);
     return Object.values(object?.properties || {}).map(id => doc.semantics.variables.find(v => v.id === id)?.symbol).filter(Boolean).join(',\\; ');
   }
+  zoom = 1;
+  onViewChange: () => void = () => {};
+  private viewport: HTMLElement;
+  private extent: HTMLElement;
+  private viewDocumentId = '';
+  private pinch?: { distance: number; zoom: number; x: number; y: number };
   constructor(private store: DocumentStore, private container: HTMLDivElement) {
+    this.viewport = container.parentElement!; this.extent = document.querySelector<HTMLElement>('#document-extent')!;
     this.stage = new Konva.Stage({ container, width: 800, height: 600 });
     this.stage.add(this.grid, this.layer, this.components, this.coordinates, this.origins, this.controls);
     this.controls.add(this.transformer);
     this.stage.on('click tap', e => { if (e.target === this.stage) this.select(null); });
-    new ResizeObserver(() => this.fit()).observe(container);
+    new ResizeObserver(() => this.fit()).observe(this.viewport);
+    this.viewport.addEventListener('scroll', () => this.applyView());
+    container.addEventListener('touchstart', e => this.touchView(e), {passive:false,capture:true});
+    container.addEventListener('touchmove', e => this.touchView(e), {passive:false,capture:true});
+    for(const event of ['touchend','touchcancel'])container.addEventListener(event, () => {this.pinch=undefined;}, {capture:true});
     const finishGesture=()=>{if(!this.store.inTransaction)return;this.stage.find('*').forEach(node=>{if(node.isDragging())node.stopDrag();});while(this.store.inTransaction)this.store.endTransaction();};
     window.addEventListener('pointercancel',finishGesture);window.addEventListener('touchcancel',finishGesture);window.addEventListener('blur',finishGesture);
   }
@@ -42,10 +53,47 @@ export class DiagramRenderer {
   }
   private snap(v: number) { const size = this.store.document.presentation.grid.size; return Math.round(v / size) * size; }
   fit() {
-    const { width, height } = this.store.document.presentation.canvas;
-    const scale = Math.min(this.container.clientWidth / width, this.container.clientHeight / height);
-    if (scale <= 0) return;
-    this.stage.size({ width: width * scale, height: height * scale }); this.stage.scale({ x: scale, y: scale }); this.origins.find<Konva.Circle>('Circle').forEach(dot=>dot.radius(3.5/scale));this.stage.batchDraw();
+    const { width, height, minX=0, minY=0 } = this.store.document.presentation.canvas;
+    const w=this.viewport.clientWidth,h=this.viewport.clientHeight;if(!w || !h)return;
+    this.container.style.width=`${w}px`;this.container.style.height=`${h}px`;
+    this.stage.size({width:w,height:h});
+    this.extent.style.width=`${Math.max(w,width*this.zoom)}px`;
+    this.extent.style.height=`${Math.max(h,height*this.zoom)}px`;
+    if(this.viewDocumentId!==this.store.document.id){
+      this.viewDocumentId=this.store.document.id;
+      this.viewport.scrollLeft=-minX*this.zoom-w/2;
+      this.viewport.scrollTop=-minY*this.zoom-h/2;
+    }
+    this.applyView();
+  }
+  private applyView() {
+    const {minX=0,minY=0}=this.store.document.presentation.canvas;
+    this.stage.scale({x:this.zoom,y:this.zoom});
+    this.stage.position({x:-minX*this.zoom-this.viewport.scrollLeft,y:-minY*this.zoom-this.viewport.scrollTop});
+    this.stage.find<Konva.Shape>('Shape').forEach(shape => {if(shape.getAttr('hitStrokeWidth') !== undefined && shape.getAttr('hitStrokeWidth') !== 'auto')shape.hitStrokeWidth(Math.max(shape.strokeWidth(),20/this.zoom));});
+    this.stage.batchDraw();this.onViewChange();
+  }
+  setZoom(value:number, focal={x:this.viewport.clientWidth/2,y:this.viewport.clientHeight/2}) {
+    const {minX=0,minY=0}=this.store.document.presentation.canvas;
+    const point=this.stage.getAbsoluteTransform().copy().invert().point(focal);
+    this.zoom=Math.max(.5,Math.min(2,value));this.fit();
+    this.viewport.scrollLeft=(point.x-minX)*this.zoom-focal.x;
+    this.viewport.scrollTop=(point.y-minY)*this.zoom-focal.y;this.applyView();
+  }
+  private touchView(event:TouchEvent) {
+    if(event.touches.length!==2)return;
+    event.preventDefault();event.stopImmediatePropagation();
+    const rect=this.container.getBoundingClientRect(),a=event.touches[0],b=event.touches[1];
+    const x=(a.clientX+b.clientX)/2-rect.left,y=(a.clientY+b.clientY)/2-rect.top,distance=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);
+    if(!this.pinch){
+      this.stage.find('*').forEach(node=>{if(node.isDragging())node.stopDrag();});
+      while(this.store.inTransaction)this.store.endTransaction();
+      this.pinch={distance,zoom:this.zoom,x,y};return;
+    }
+    const previous=this.pinch;
+    this.setZoom(previous.zoom*distance/Math.max(1,previous.distance),{x:previous.x,y:previous.y});
+    this.viewport.scrollLeft+=previous.x-x;this.viewport.scrollTop+=previous.y-y;this.applyView();
+    this.pinch={distance,zoom:this.zoom,x,y};
   }
   async prepare(doc: DiagramDocument) {
     await Promise.all(doc.presentation.elements.filter(e => e.kind === 'latex').map(e => renderMath(e.latex, e.fontSize)));
@@ -56,8 +104,8 @@ export class DiagramRenderer {
     await this.prepare(this.store.document);
     this.select(null); this.layer.destroyChildren(); this.nodes.clear(); this.labels.clear(); this.grid.destroyChildren();
     const { canvas, grid, elements } = this.store.document.presentation;
-    for (let x = 0; x < canvas.width; x += grid.size) this.grid.add(new Konva.Line({ points: [x, 0, x, canvas.height], stroke: '#eee', strokeWidth: 1 }));
-    for (let y = 0; y < canvas.height; y += grid.size) this.grid.add(new Konva.Line({ points: [0, y, canvas.width, y], stroke: '#eee', strokeWidth: 1 }));
+    for (let x = canvas.minX??0; x < (canvas.minX??0)+canvas.width; x += grid.size) this.grid.add(new Konva.Line({ points: [x, canvas.minY??0, x, (canvas.minY??0)+canvas.height], stroke: x % (grid.size*5) === 0 ? '#d4dbe1' : '#eef0f2', strokeWidth: 1 }));
+    for (let y = canvas.minY??0; y < (canvas.minY??0)+canvas.height; y += grid.size) this.grid.add(new Konva.Line({ points: [canvas.minX??0, y, (canvas.minX??0)+canvas.width, y], stroke: y % (grid.size*5) === 0 ? '#d4dbe1' : '#eef0f2', strokeWidth: 1 }));
     this.grid.visible(grid.visible);
     for (const e of [...elements.filter(e=>e.kind==='surface'),...elements.filter(e=>e.kind!=='surface')]) await this.addNode(e);
     this.renderCoordinates();this.refreshOrigins(this.store.document);this.fit();
@@ -67,7 +115,7 @@ export class DiagramRenderer {
   async addNode(record: Graphic) {
     let e=record; if(e.vectorId){const v=this.store.document.semantics.vectors.find(v=>v.id===e.vectorId);if(!v)return;const shown=displayedVector(this.store.document,v,e);if(!shown)return;e=shown;}
     if (e.visible === false) return;
-    const base = { id: e.id, x: e.x, y: e.y, rotation: e.rotation, scaleX: e.scaleX, scaleY: e.scaleY, stroke: e.stroke, strokeWidth: e.strokeWidth, strokeScaleEnabled: !e.semanticId, fill: e.fill, draggable: true };
+    const base = { id: e.id, x: e.x, y: e.y, rotation: e.rotation, scaleX: e.scaleX, scaleY: e.scaleY, stroke: e.stroke, strokeWidth: e.strokeWidth, strokeScaleEnabled: true, fill: e.fill, draggable: true };
     let node: Konva.Shape;
     if(e.vectorId && isZeroMotionVector(this.store.document,this.store.document.semantics.vectors.find(v=>v.id===e.vectorId)!)){node=new Konva.Circle({...base,name:'zero-motion-anchor',radius:0,visible:false,listening:false});}
     else if(e.kind==='surface'){
@@ -93,8 +141,8 @@ export class DiagramRenderer {
     if (e.semanticId || e.vectorId) await this.addLabel(e); if(e.vectorId)node.draggable(false);
     node.on('click tap', () => this.select(e.id));
     node.on('dblclick dbltap', () => { if (e.semanticId || e.vectorId || e.kind === 'text' || e.kind === 'latex') this.onEdit(this.element(e.id)!); });
-    node.on('dragmove', () => { if(e.kind==='surface'){node.position({x:0,y:Math.max(0,Math.min(this.store.document.presentation.canvas.height-20,this.snap(node.y())))});(node as Konva.Rect).height(this.store.document.presentation.canvas.height-node.y());}else node.position({ x: this.snap(node.x()), y: this.snap(node.y()) }); this.positionLabel(e.id); this.refreshAttachments(); });
-    node.on('dragend', () => { this.store.update(e.id, { x: node.x(), y: node.y(),...(e.kind==='surface'?{height:this.store.document.presentation.canvas.height-node.y()}: {}) }); this.select(e.id); });
+    node.on('dragmove', () => { if(e.kind==='surface'){node.position({x:e.x,y:this.snap(node.y())});}else node.position({ x: this.snap(node.x()), y: this.snap(node.y()) }); this.positionLabel(e.id); this.refreshAttachments(); });
+    node.on('dragend', () => { this.store.update(e.id, { x: node.x(), y: node.y(), }); this.select(e.id); });
     node.on('transformend', () => {
       const patch = { x: this.snap(node.x()), y: this.snap(node.y()), rotation: node.rotation(), scaleX: node.scaleX(), scaleY: node.scaleY(), ...(node instanceof Konva.Line?{points:node.points() as Graphic['points']}:{}) };
       node.position({ x: patch.x, y: patch.y }); this.store.update(e.id, patch); this.positionLabel(e.id); this.refreshAttachments(); this.select(e.id);
@@ -110,7 +158,7 @@ export class DiagramRenderer {
   private positionLabel(id: string) {
     const e = this.element(id), label = this.labels.get(id); if (!e || !label) return;
     const size=label.getClientRect({skipTransform:true});
-    label.position(labelPosition(this.currentGraphic(id),size.width,size.height,true,this.store.document.presentation.canvas));
+    label.position(labelPosition(this.currentGraphic(id),size.width,size.height,true));
   }
   private async addLabel(e: Graphic) {
     const object = this.store.document.semantics.objects.find(o => o.id === e.semanticId);
@@ -123,7 +171,7 @@ export class DiagramRenderer {
     this.labels.set(e.id, group); this.layer.add(group); this.positionLabel(e.id);
     group.on('click tap', () => this.select(e.id));
     group.on('dblclick dbltap', () => this.onEdit(this.element(e.id)!));
-    group.on('dragend', () => { const current = this.element(e.id)!; const size=group.getClientRect({skipTransform:true}),anchor=labelPosition(this.currentGraphic(e.id),size.width,size.height,false,this.store.document.presentation.canvas); this.store.update(e.id, { label: { ...effectiveLabel(current)!, offsetX: group.x() - anchor.x, offsetY: group.y() - anchor.y } }); this.select(e.id); });
+    group.on('dragend', () => { const current = this.element(e.id)!; const size=group.getClientRect({skipTransform:true}),anchor=labelPosition(this.currentGraphic(e.id),size.width,size.height,false); this.store.update(e.id, { label: { ...effectiveLabel(current)!, offsetX: group.x() - anchor.x, offsetY: group.y() - anchor.y } }); this.select(e.id); });
     this.historyGesture(group);
   }
   private refreshAttachments(){
@@ -134,7 +182,7 @@ export class DiagramRenderer {
   private refreshOrigins(doc:DiagramDocument){
     this.origins.destroyChildren();const counts=new Map<string,number>();
     for(const v of doc.semantics.vectors){const g=doc.presentation.elements.find(g=>g.vectorId===v.id);if(v.kind==='separation'||isZeroMotionVector(doc,v)||!v.objectId||!g||g.visible===false||!displayedVector(doc,v,g))continue;counts.set(v.objectId,(counts.get(v.objectId)||0)+1);}
-    for(const [id,count]of counts){if(count<2)continue;const graphic=doc.presentation.elements.find(g=>g.semanticId===id);if(!graphic)continue;const point=attachmentPoint(graphic);this.origins.add(new Konva.Circle({name:'shared-origin',ownerObjectId:id,x:point.x,y:point.y,radius:3.5/(this.stage.scaleX()||1),fill:'#000',listening:false}));}
+    for(const [id,count]of counts){if(count<2)continue;const graphic=doc.presentation.elements.find(g=>g.semanticId===id);if(!graphic)continue;const point=attachmentPoint(graphic);this.origins.add(new Konva.Circle({name:'shared-origin',ownerObjectId:id,x:point.x,y:point.y,radius:3.5,fill:'#000',listening:false}));}
     this.origins.batchDraw();
   }
   private element(id: string) { return this.store.document.presentation.elements.find(e => e.id === id); }
@@ -158,15 +206,16 @@ export class DiagramRenderer {
       const v=e.vectorId && this.store.document.semantics.vectors.find(v=>v.id===e.vectorId);
       for (const index of v ? (v.kind==='separation'||v.role==='resultant'?[]:[2]) : [0,2]) {
         const abs = node.getAbsoluteTransform().copy(); const scale = this.stage.scaleX();
-        const p = abs.point({ x: (node as Konva.Line).points()[index], y: (node as Konva.Line).points()[index + 1] });
-        const handle = new Konva.Circle({ x: p.x / scale, y: p.y / scale, radius: 6, fill: '#ff0', stroke: '#000', strokeWidth: 1, draggable: true });
-        const hit = new Konva.Circle({ x: handle.x(), y: handle.y(), radius: 16, fill: 'rgba(0,0,0,0.01)', draggable: true });
+        const screen = abs.point({ x: (node as Konva.Line).points()[index], y: (node as Konva.Line).points()[index + 1] });
+        const p=this.stage.getAbsoluteTransform().copy().invert().point(screen);
+        const handle = new Konva.Circle({ x: p.x, y: p.y, radius: 6, fill: '#ff0', stroke: '#000', strokeWidth: 1, draggable: true });
+        const hit = new Konva.Circle({ x: handle.x(), y: handle.y(), radius: 16/scale, fill: 'rgba(0,0,0,0.01)', draggable: true });
         const move = (target: Konva.Circle) => {
           target.position({ x: this.snap(target.x()), y: this.snap(target.y()) });
           handle.position(target.position()); hit.position(target.position());
-          const local = node.getAbsoluteTransform().copy().invert().point({ x: target.x() * scale, y: target.y() * scale });
+          const local = node.getAbsoluteTransform().copy().invert().point(this.stage.getAbsoluteTransform().point(target.position()));
           const points = [...this.element(id)!.points] as Graphic['points']; points[index] = local.x; points[index + 1] = local.y;
-          if(v && v.role==='friction'){const normal=this.store.document.semantics.vectors.find(n=>n.interactionId===v.interactionId && n.role==='normal');const ng=normal && this.store.document.presentation.elements.find(g=>g.vectorId===normal.id);if(ng){const a=Math.atan2(ng.points[3],ng.points[2])+Math.PI/2,ux=Math.cos(a),uy=Math.sin(a),length=Math.max(20,local.x*ux+local.y*uy);points[2]=ux*length;points[3]=uy*length;const absolute=node.getAbsoluteTransform().point({x:points[2],y:points[3]});handle.position({x:absolute.x/scale,y:absolute.y/scale});hit.position(handle.position());}}
+          if(v && v.role==='friction'){const normal=this.store.document.semantics.vectors.find(n=>n.interactionId===v.interactionId && n.role==='normal');const ng=normal && this.store.document.presentation.elements.find(g=>g.vectorId===normal.id);if(ng){const a=Math.atan2(ng.points[3],ng.points[2])+Math.PI/2,ux=Math.cos(a),uy=Math.sin(a),length=Math.max(20,local.x*ux+local.y*uy);points[2]=ux*length;points[3]=uy*length;const absolute=node.getAbsoluteTransform().point({x:points[2],y:points[3]});handle.position(this.stage.getAbsoluteTransform().copy().invert().point(absolute));hit.position(handle.position());}}
           (node as Konva.Line).points(points); this.store.update(id, { points }); this.refreshAttachments(); this.stage.batchDraw();
         };
         handle.on('dragmove', () => move(handle)); hit.on('dragmove', () => move(hit));
