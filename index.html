@@ -29,15 +29,15 @@
 <label id="from-label"><span>FROM</span> <select id="vector-from"></select></label><label id="to-label"><span>TO</span> <select id="vector-to"></select></label>
 <label id="separation-label">Separation <select id="vector-separation"></select></label>
 <div id="magnitude-fields"></div>
-<div id="friction-options"><label>Friction <select id="vector-friction"><option value="none">None</option><option value="static">Static</option><option value="kinetic">Kinetic</option></select></label><div id="friction-magnitude"></div><label class="check"><input id="coefficient-enabled" type="checkbox">Define friction coefficient</label><div id="coefficient-fields"></div><label class="check"><input id="resultant-visible" type="checkbox">Show resultant</label></div>
+<div id="friction-options"><label>Friction <select id="vector-friction"><option value="none">None</option><option value="static">Static</option><option value="kinetic">Kinetic</option></select></label><div id="friction-variables" class="symbol-preview"></div><label class="check"><input id="coefficient-enabled" type="checkbox">Define friction coefficient</label><div id="coefficient-fields"></div><div id="friction-magnitude"></div><label class="check"><input id="resultant-visible" type="checkbox">Show resultant</label></div>
 <div id="volume-fields"></div>
 <label id="components-label" class="check"><input id="vector-components" type="checkbox" checked>Show coordinate components</label>
 <p id="components-hint" class="hint">Define a coordinate system to display components and angles.</p>
 <section id="component-angle-section" hidden aria-label="Component angles">
 <fieldset id="component-angle-fields"><legend>Component angles</legend>
 <label class="check"><input id="vector-angles" type="checkbox" checked>Show angles</label>
-<label><span id="component-angle-x-symbol"></span> = <input id="component-angle-x" type="number" step="any" min="0" max="90" aria-label="x component angle"> °</label>
-<label><span id="component-angle-y-symbol"></span> = <input id="component-angle-y" type="number" step="any" min="0" max="90" aria-label="y component angle"> °</label>
+<label class="component-angle-row"><span id="component-angle-x-symbol"></span> = <input id="component-angle-x" type="number" step="any" min="0" max="90" aria-label="x component angle"> °</label>
+<label class="component-angle-row"><span id="component-angle-y-symbol"></span> = <input id="component-angle-y" type="number" step="any" min="0" max="90" aria-label="y component angle"> °</label>
 </fieldset><p id="component-angle-hint" class="hint"></p></section>
 <label class="check"><input id="vector-visible" type="checkbox" checked>Show vector</label>
 <p id="vector-error" role="alert"></p><div class="dialog-actions"><button type="button" id="delete-vector" hidden>Delete vector</button><button type="button" id="cancel-vector">Cancel</button><button type="submit" id="save-vector">Save vector</button></div></form></dialog>
@@ -46,9 +46,9 @@
 <label>Dimensionality <select id="coordinate-dimensions"><option value="1">1D</option><option value="2" selected>2D</option></select></label>
 <label class="check"><input id="coordinate-reverse-x" type="checkbox">Reverse x-axis</label>
 <label id="reverse-y-label" class="check"><input id="coordinate-reverse-y" type="checkbox">Reverse y-axis</label>
-<label>Rotation angle (degrees) <input id="coordinate-angle" type="number" step="any" value="0" required min="-1000000" max="1000000"></label>
+
 <p class="hint">Changing orientation, reversal, or dimensionality clears explicitly defined component angles without moving vectors.</p>
-<p class="hint">Positive angles rotate counterclockwise. Drag the origin to move the axes; select the axes to rotate them.</p>
+<p class="hint">Rotate the axes directly on the canvas; counterclockwise is positive orientation. Drag the origin to move the axes; select the axes to rotate them.</p>
 <label class="check"><input id="coordinate-visible" type="checkbox" checked>Show coordinate system</label><p id="coordinate-error" role="alert"></p>
 <button id="delete-coordinates" type="button">Delete coordinate system</button><div class="dialog-actions"><button id="cancel-coordinates" type="button">Cancel</button><button type="submit">Save coordinates</button></div></form></dialog>
 

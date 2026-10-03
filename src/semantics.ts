@@ -1,7 +1,7 @@
 /** Physics definitions are independent of graphics. No primitive implies physics. */
 export type PropertyQuantity = 'mass' | 'charge' | 'density' | 'gravity' | 'springConstant' | 'extension' | 'surfaceChargeDensity';
 export type Quantity = PropertyQuantity | 'force' | 'gravitationalField' | 'electricField' | 'length' | 'velocity' | 'acceleration' | 'displacement' | 'staticFriction' | 'kineticFriction' | 'volume';
-export type Expression = {type:'number';value:number} | {type:'reference';id:string} | {type:'pi'} | {type:'unary';op:'-'|'abs';operand:Expression} | {type:'binary';op:'+'|'-'|'*'|'/'|'^';left:Expression;right:Expression};
+export type Expression = {type:'mathed';expression:import('./vendor/mathed/model').Expression} | {type:'number';value:number} | {type:'reference';id:string} | {type:'pi'} | {type:'unary';op:'-'|'abs';operand:Expression} | {type:'binary';op:'+'|'-'|'*'|'/'|'^';left:Expression;right:Expression};
 export interface Variable { expression?: Expression; ownerInteractionId?: string; ownerVectorId?: string; generatedSymbol?: boolean; id: string; symbol: string; value?: number; unit?: string; quantity?: Quantity; state?: 'known' | 'unknown' | 'expression'; ownerObjectId?: string }
 export type ObjectCategory = 'ordinary' | 'spatialPoint' | 'planetSurface' | 'spring' | 'cable' | 'chargedPlate' | 'fluid';
 export interface PhysicalObject { category?: ObjectCategory; abbreviation?: string; abbreviationName?: string; polarity?: 'positive' | 'negative'; id: string; name: string; properties?: Record<string, string> }

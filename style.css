@@ -107,8 +107,8 @@ fieldset { margin:12px 0; padding:0 12px 12px; border:1px solid #ddd; border-rad
 .object-name { grid-column:1 / -1; text-align:left; border:0; background:#f5f5f5; overflow-wrap:anywhere; font-size:16px; }
 .object-state { font-size:12px; color:#555; }
 .object-row button { min-width:44px; }
-.expression-palette{display:flex;flex-wrap:wrap;gap:5px}.expression-palette button{min-width:36px;min-height:36px}.expression-preview{padding:12px;min-height:36px;overflow-x:auto}.expression-error{color:#a22}
-#vector-list .object-row{grid-template-columns:repeat(2,minmax(0,1fr))}#vector-list button{overflow-wrap:anywhere;min-width:0}.expression-palette input{max-width:140px}button:disabled{cursor:default;opacity:.45}
+
+#vector-list .object-row{grid-template-columns:repeat(2,minmax(0,1fr))}#vector-list button{overflow-wrap:anywhere;min-width:0}button:disabled{cursor:default;opacity:.45}
 @media(max-width:600px){#toolbar-top{gap:4px;padding:0 6px}#toolbar-top button{padding:4px 8px;font-size:13px}#selected-name{display:none}}
 
 #elements-menu { position:relative; font-size:14px; }
@@ -152,3 +152,16 @@ fieldset { margin:12px 0; padding:0 12px 12px; border:1px solid #ddd; border-rad
 
 #component-angle-fields {margin:12px 0;border:1px solid #d4dbe1;border-radius:6px;}
 #component-angle-fields:disabled {opacity:.55;}
+/* Embedded Mathed retains its own controls and editing behavior. */
+dialog .component-angle-row {display:flex;align-items:center;gap:.4rem;flex-wrap:nowrap;}
+dialog .component-angle-row input {width:5.5rem;min-width:0;flex:0 0 5.5rem;}
+.expression-vocabulary {margin:8px 0;position:relative;}
+.expression-vocabulary summary {box-sizing:border-box;display:inline-block;cursor:pointer;border:1px solid #c9d1dc;border-radius:7px;padding:8px 12px;min-height:44px;}
+.expression-vocabulary summary::after {content:' ▾';}
+.expression-variable-menu {display:flex;flex-direction:column;max-height:220px;overflow:auto;border:1px solid #c9d1dc;padding:4px;background:white;}
+.expression-variable-menu button {text-align:left;min-height:44px;}
+.expression-vocabulary:not([open]) .expression-variable-menu {display:none;}
+.mathed-editor .me-field {min-height:80px;}
+dialog .mathed-editor .me-input {width:1px;height:1px;padding:0;margin:0;border:0;}
+dialog .mathed-editor select {display:inline-block;width:auto;margin:0;}
+dialog .component-angle-row input {margin:0;}

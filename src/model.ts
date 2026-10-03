@@ -8,6 +8,7 @@ export interface Graphic {
   text: string; latex: string; fontSize: number; fontFamily: string;
   visible?: boolean;
   showComponents?: boolean;
+  motionPlacement?: 'free';
   decompositionLabels?: { components?: Partial<Record<'x' | 'y', [number, number]>>; angles?: Partial<Record<'x' | 'y', [number, number]>> };
   // Dormant arrow geometry for returning a known-zero motion label to an arrow.
   motionArrowPoints?: [number, number, number, number];

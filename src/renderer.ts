@@ -25,9 +25,9 @@ export class DiagramRenderer {
   onEdit: (element: Graphic) => void = () => {};
   onSelect: (element: Graphic | null) => void = () => {};
   private symbols(e: Graphic, doc = this.store.document) {
-    if(e.vectorId){const v=doc.semantics.vectors.find(v=>v.id===e.vectorId),m=doc.semantics.variables.find(variable=>variable.id===v?.variableId);return m ? quantityLabel(m,v&&isZeroMotionVector(doc,v)?m.symbol:vectorLatex(m.symbol)) : '';}
+    if(e.vectorId){const v=doc.semantics.vectors.find(v=>v.id===e.vectorId),m=doc.semantics.variables.find(variable=>variable.id===v?.variableId);return m ? quantityLabel(m,v&&isZeroMotionVector(doc,v)?m.symbol:vectorLatex(m.symbol),doc) : '';}
     const object = doc.semantics.objects.find(o => o.id === e.semanticId);
-    return Object.values(object?.properties || {}).map(id => quantityLabel(doc.semantics.variables.find(v => v.id === id))).filter(Boolean).join(',\\; ');
+    return Object.values(object?.properties || {}).map(id => quantityLabel(doc.semantics.variables.find(v => v.id === id),undefined,doc)).filter(Boolean).join(',\\; ');
   }
 
   zoom = 1;
@@ -153,10 +153,10 @@ export class DiagramRenderer {
         context.beginPath(); context.arc(0, 0, 22 / this.stage.scaleX(), 0, Math.PI * 2, false); context.closePath(); context.fillStrokeShape(shape);
       });
     }
-    if (e.semanticId || e.vectorId) await this.addLabel(e); if(e.vectorId)node.draggable(false);
+    if (e.semanticId || e.vectorId) await this.addLabel(e); if(e.vectorId)node.draggable(this.store.document.semantics.vectors.find(v=>v.id===e.vectorId)?.kind==='motion');
     node.on('click tap', () => this.select(e.id));
     node.on('dblclick dbltap', () => { if (e.semanticId || e.vectorId || e.kind === 'text' || e.kind === 'latex') this.onEdit(this.element(e.id)!); });
-    node.on('dragmove', () => { if(e.kind==='surface'){node.position({x:e.x,y:this.snap(node.y())});}else node.position({ x: this.snap(node.x()), y: this.snap(node.y()) }); this.positionLabel(e.id); this.refreshAttachments(); });
+    node.on('dragmove', () => { if(e.kind==='surface'){node.position({x:e.x,y:this.snap(node.y())});}else node.position({ x: this.snap(node.x()), y: this.snap(node.y()) }); this.positionLabel(e.id); this.refreshAttachments();if(this.store.document.semantics.vectors.find(v=>v.id===e.vectorId)?.kind==='motion')this.select(e.id); });
     node.on('dragend', () => { const before=structuredClone(this.store.document);Object.assign(this.element(e.id)!,{x:node.x(),y:node.y()});clearChangedComponentAngles(this.store.document,before);this.store.changed();this.select(e.id); });
     node.on('transformend', () => {
       const before=structuredClone(this.store.document);
@@ -192,20 +192,20 @@ export class DiagramRenderer {
     this.historyGesture(group);
   }
   private refreshAttachments(){
-    const doc=structuredClone(this.store.document);for(const g of doc.presentation.elements)if(g.semanticId && this.nodes.has(g.id))Object.assign(g,this.currentGraphic(g.id));
+    const doc=structuredClone(this.store.document);for(const g of doc.presentation.elements)if((g.semanticId || doc.semantics.vectors.find(v=>v.id===g.vectorId)?.kind==='motion') && this.nodes.has(g.id))Object.assign(g,this.currentGraphic(g.id));
     for(const g of doc.presentation.elements){if(!g.vectorId)continue;const v=doc.semantics.vectors.find(v=>v.id===g.vectorId),node=this.nodes.get(g.id);if(!v||!node)continue;const current=displayedVector(doc,v,g);if(!current)continue;node.position({x:current.x,y:current.y});if(node instanceof Konva.Line)node.points(current.points);this.positionLabel(g.id);}
     this.refreshOrigins(doc); void this.refreshComponents();
   }
   private refreshOrigins(doc:DiagramDocument){
     this.origins.destroyChildren();const counts=new Map<string,number>();
-    for(const v of doc.semantics.vectors){const g=doc.presentation.elements.find(g=>g.vectorId===v.id);if(v.kind==='separation'||isZeroMotionVector(doc,v)||!v.objectId||!g||g.visible===false||!displayedVector(doc,v,g))continue;counts.set(v.objectId,(counts.get(v.objectId)||0)+1);}
+    for(const v of doc.semantics.vectors){const g=doc.presentation.elements.find(g=>g.vectorId===v.id);if(v.kind==='separation'||v.kind==='motion'||isZeroMotionVector(doc,v)||!v.objectId||!g||g.visible===false||!displayedVector(doc,v,g))continue;counts.set(v.objectId,(counts.get(v.objectId)||0)+1);}
     for(const [id,count]of counts){if(count<2)continue;const graphic=doc.presentation.elements.find(g=>g.semanticId===id);if(!graphic)continue;const point=attachmentPoint(graphic);this.origins.add(new Konva.Circle({name:'shared-origin',ownerObjectId:id,x:point.x,y:point.y,radius:3.5,fill:'#000',listening:false}));}
     this.origins.batchDraw();
   }
   private element(id: string) { return this.store.document.presentation.elements.find(e => e.id === id); }
   select(id: string | null) {
     const old = this.selectedId && this.nodes.get(this.selectedId);
-    if (old) { const e = this.element(this.selectedId!); if (e && !['text', 'latex'].includes(e.kind)) old.stroke(e.stroke); old.draggable(!e?.vectorId); }
+    if (old) { const e = this.element(this.selectedId!); if (e && !['text', 'latex'].includes(e.kind)) old.stroke(e.stroke); old.draggable(!e?.vectorId || this.store.document.semantics.vectors.find(v=>v.id===e?.vectorId)?.kind==='motion'); }
     this.controls.destroyChildren(); this.transformer = new Konva.Transformer({ rotateEnabled: true, ignoreStroke: true, padding: 4, anchorSize: 12 }); this.controls.add(this.transformer);
     this.selectedId = id;
     const selectedVector = id && this.element(id)?.vectorId;
@@ -219,7 +219,7 @@ export class DiagramRenderer {
     if (!e || !node) return;
     const selectedMotion=e.vectorId&&this.store.document.semantics.vectors.find(v=>v.id===e.vectorId);if(selectedMotion&&isZeroMotionVector(this.store.document,selectedMotion)){this.stage.batchDraw();return;}
     if (['line', 'arrow', 'dashedArrow','spring','cable'].includes(e.kind)) {
-      node.stroke('orange'); node.draggable(false);
+      node.stroke('orange'); node.draggable(this.store.document.semantics.vectors.find(v=>v.id===e.vectorId)?.kind==='motion');
       const v=e.vectorId && this.store.document.semantics.vectors.find(v=>v.id===e.vectorId);
       for (const index of v ? (v.kind==='separation'||v.role==='resultant'?[]:[2]) : [0,2]) {
         const abs = node.getAbsoluteTransform().copy(); const scale = this.stage.scaleX();

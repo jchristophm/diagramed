@@ -1,3 +1,4 @@
+import {fixtureOrientation} from './view-helpers';
 import {test,expect,type Page} from './test-fixture';
 import {DocumentStore} from '../../src/model';
 import {saveObject,presetDraft} from '../../src/objects';
@@ -35,7 +36,7 @@ test('four independent label offsets preserve geometry, history, zoom, pan and r
 test('coordinate selection retains the active vector, configuration updates it and another vector takes over',async({page})=>{
  const {s,v,symbol}=fixture();const other=saveVector(s,{kind:'acceleration',targetId:s.document.semantics.objects[0].id,magnitude:{state:'unknown',unit:'m/s^2'},angle:-60,length:120}),otherSymbol=s.document.semantics.variables.find(x=>x.ownerVectorId===other)!.symbol;
  await page.goto('./');await load(page,s.document);await select(page,symbol);const before=await snapshot(page);
- await page.getByTitle('Coordinates',{exact:true}).click();await page.locator('#coordinate-angle').fill('15');await page.getByRole('button',{name:'Save coordinates'}).click();await expect.poll(async()=>(await snapshot(page)).active).toBe(v);expect((await snapshot(page)).components).not.toEqual(before.components);expect((await snapshot(page)).angles).toHaveLength(2);
+ await page.getByTitle('Coordinates',{exact:true}).click();await fixtureOrientation(page,Number('15'));await page.getByRole('button',{name:'Save coordinates'}).click();await expect.poll(async()=>(await snapshot(page)).active).toBe(v);expect((await snapshot(page)).components).not.toEqual(before.components);expect((await snapshot(page)).angles).toHaveLength(2);
  await page.getByTitle('Coordinates',{exact:true}).click();await page.locator('#coordinate-reverse-x').check();await page.getByRole('button',{name:'Save coordinates'}).click();await expect.poll(async()=>(await snapshot(page)).active).toBe(v);
  await select(page,otherSymbol);expect((await snapshot(page)).active).toBe(other);
 });

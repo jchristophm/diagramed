@@ -14,3 +14,14 @@ export async function fixtureView(page:Page,doc:any){
  await page.locator('#main-canvas').evaluate((e,c:any)=>{e.scrollLeft=(0-(c.minX??0))*.5;e.scrollTop=(0-(c.minY??0))*.5;},c);
  await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
 }
+
+/** Exact native fixtures exercise tolerance boundaries after numeric orientation
+ * was removed from normal UI; direct gestures have separate live regressions. */
+export async function fixtureOrientation(page:Page,angle:number){
+ const open=await page.locator('#coordinate-dialog').isVisible();if(open)await page.locator('#cancel-coordinates').click();
+ const pending=page.waitForEvent('download');await page.getByTitle('Download JSON').click();
+ const {readFile}=await import('node:fs/promises');const doc=JSON.parse(await readFile((await(await pending).path())!,'utf8'));
+ doc.semantics.coordinateSystems[0].angle=angle;for(const v of doc.semantics.vectors)delete v.componentAngle;
+ await page.locator('#file-input').setInputFiles({name:'orientation.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(doc))});
+ await page.locator('#status').filter({hasText:'Opened'}).waitFor();if(open)await page.getByTitle('Coordinates',{exact:true}).click();
+}

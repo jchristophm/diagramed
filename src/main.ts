@@ -45,7 +45,7 @@ function openObject(id?: string) {
   $('#object-title').textContent = id ? 'Edit object' : 'Define object';
   $('#save-object').textContent = id ? 'Save object' : 'Create object';
   $('#object-error').textContent = '';
-  showPropertyFields($('#property-fields'), draft.properties,draft.category);
+  showPropertyFields($('#property-fields'), draft.properties,draft.category,store.document);
   refreshPropertyPreview();
   dialog.showModal();
 }
@@ -67,7 +67,7 @@ function applyType(category:ObjectCategory){
  $<HTMLSelectElement>('#object-representation').value=draft.representation;
  $<HTMLSelectElement>('#object-polarity').value=draft.polarity!;
  for(const key of categoryProperties[category])if(previous?.[key])draft.properties![key]=previous[key];
- showPropertyFields($('#property-fields'),draft.properties,category);refreshPropertyPreview();
+ showPropertyFields($('#property-fields'),draft.properties,category,store.document);refreshPropertyPreview();
 }
 $<HTMLSelectElement>('#object-type').addEventListener('change',event=>{try{applyType((event.target as HTMLSelectElement).value as ObjectCategory);}catch(error){$('#object-error').textContent=(error as Error).message;}});
 function showCollection() {
@@ -165,3 +165,5 @@ void renderer.render().catch(report);
 
 function refreshPropertyPreview(){refreshPropertySymbols($('#property-fields'),store.document,$<HTMLInputElement>('#object-name').value,$<HTMLSelectElement>('#object-type').value as ObjectCategory,editingId);}
 $('#object-name').addEventListener('input',refreshPropertyPreview);
+
+$('#property-fields').addEventListener('change',refreshPropertyPreview);

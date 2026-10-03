@@ -1,16 +1,43 @@
 import katex from 'katex';
 import type {DiagramDocument} from './model';
 import type {Expression,PhysicalVector} from './semantics';
-import {contextualReferences,expressionTokens,parseTokens,expressionLatex,type Token,validateExpression} from './expressions';
-import {physicalConstants} from './constants';
-const builders=new WeakMap<HTMLElement,{tokens:Token[];allowed:Set<string>}>();
-export function mountExpression(host:HTMLElement,doc:DiagramDocument,vector:PhysicalVector,expression?:Expression){
- host.replaceChildren();const allowed=new Set(contextualReferences(doc,vector));const state={tokens:expression?expressionTokens(expression):[],allowed};builders.set(host,state);
- const palette=document.createElement('div');palette.className='expression-palette';const preview=document.createElement('div');preview.className='expression-preview';preview.setAttribute('aria-live','polite');const message=document.createElement('p');message.className='expression-error';
- const render=()=>{message.textContent='';try{const e=parseTokens(state.tokens);validateExpression(e,allowed);preview.innerHTML=katex.renderToString(expressionLatex(e,doc),{throwOnError:false,trust:false,maxExpand:1000});}catch(e){preview.textContent=state.tokens.map(t=>t.type==='reference'?doc.semantics.variables.find(v=>v.id===t.id)?.symbol||Object.values(physicalConstants).find(c=>c.id===t.id)?.symbol:t.type==='number'?t.value:t.value).join(' ');if(state.tokens.length)message.textContent=(e as Error).message;}};
- const button=(label:string,action:()=>void)=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.addEventListener('click',()=>{try{action();render();}catch(e){message.textContent=(e as Error).message;}});palette.append(b);return b;};
- for(const id of allowed){const symbol=doc.semantics.variables.find(v=>v.id===id)?.symbol||Object.values(physicalConstants).find(c=>c.id===id)?.symbol||id;const b=button(symbol,()=>state.tokens.push({type:'reference',id}));b.dataset.referenceId=id;b.setAttribute('aria-label',`Insert ${symbol}`);b.innerHTML=katex.renderToString(symbol,{throwOnError:false,trust:false,maxExpand:1000});}
- for(const op of ['+','-','*','/','^','(',')','pi','abs'])button(op,()=>{state.tokens.push({type:'operation',value:op});if(op==='abs')state.tokens.push({type:'operation',value:'('});});
- const literal=document.createElement('input');literal.type='text';literal.inputMode='decimal';literal.placeholder='Number';literal.setAttribute('aria-label','Numerical literal');palette.append(literal);button('Insert number',()=>{const text=literal.value.trim();if(!text || !Number.isFinite(Number(text))){throw new Error('Enter a finite number.');}state.tokens.push({type:'number',value:Number(text)});literal.value='';});button('Backspace',()=>{state.tokens.pop();});button('Clear expression',()=>{state.tokens=[];});host.append(palette,preview,message);render();
+import {expressionVocabulary,validateExpression} from './expressions';
+import {createEditor,type MathedEditor} from './vendor/mathed/mathed';
+import {makeDocument,type Expression as MathExpression} from './vendor/mathed/model';
+
+/** Lossless legacy-tree import; new definitions retain Mathed's structured tree. */
+export function toMathed(e:Expression):MathExpression{
+ if(e.type==='mathed')return structuredClone(e.expression);
+ if(e.type==='reference')return [{type:'variable',id:e.id}];
+ if(e.type==='number')return [{type:'number',value:String(e.value)}];
+ if(e.type==='pi')return [{type:'constant',name:'pi'}];
+ if(e.type==='unary')return e.op==='abs'?[{type:'function',name:'abs',argument:toMathed(e.operand)}]:[{type:'operator',value:'-'},{type:'group',body:toMathed(e.operand)}];
+ if(e.op==='/')return [{type:'fraction',numerator:toMathed(e.left),denominator:toMathed(e.right)}];
+ if(e.op==='^')return [{type:'power',base:toMathed(e.left),exponent:toMathed(e.right)}];
+ return [{type:'group',body:[...toMathed(e.left),{type:'operator',value:e.op},...toMathed(e.right)]}];
 }
-export function readExpression(host:HTMLElement):Expression{const state=builders.get(host);if(!state)throw new Error('Expression editor is unavailable.');const e=parseTokens(state.tokens);validateExpression(e,state.allowed);return e;}
+const builders=new WeakMap<HTMLElement,{editor:MathedEditor;doc:DiagramDocument;menu:HTMLElement}>();
+export function mountExpression(host:HTMLElement,doc:DiagramDocument,_vector?:PhysicalVector,expression?:Expression){
+ builders.get(host)?.editor.destroy();host.replaceChildren();
+ const dropdown=document.createElement('details');dropdown.className='expression-vocabulary';
+ const summary=document.createElement('summary');summary.textContent='Variables';summary.setAttribute('aria-label','Variables');
+ const menu=document.createElement('div');menu.className='expression-variable-menu';dropdown.append(summary,menu);host.append(dropdown);
+ const editor=createEditor(host,{mode:'controlled',vocabulary:expressionVocabulary(doc),document:makeDocument(expression?toMathed(expression):[])});
+ host.querySelectorAll<HTMLElement>('[title]').forEach(el=>{el.title='Mathed '+el.title;});
+ builders.set(host,{editor,doc,menu});
+ // Opening a menu does not move Mathed's logical cursor. Insertion uses that
+ // retained path, including nested slots; Mathed restores input focus itself.
+ menu.addEventListener('click',event=>{const button=(event.target as HTMLElement).closest<HTMLButtonElement>('[data-reference-id]');if(button){editor.insertVariable(button.dataset.referenceId!);dropdown.open=false;}});
+ updateExpressionVocabulary(host,doc);
+}
+export function updateExpressionVocabulary(host:HTMLElement,doc:DiagramDocument){
+ const state=builders.get(host);if(!state)return;state.doc=doc;
+ const vocabulary=expressionVocabulary(doc);state.editor.updateVocabulary(vocabulary);state.menu.replaceChildren();
+ for(const v of vocabulary){const b=document.createElement('button');b.type='button';b.dataset.referenceId=v.id;b.setAttribute('aria-label',`Insert ${v.symbol}`);b.innerHTML=katex.renderToString(v.symbol,{throwOnError:false,trust:false,maxExpand:1000});state.menu.append(b);}
+}
+export function readExpression(host:HTMLElement):Expression{
+ const state=builders.get(host);if(!state)throw new Error('Expression editor is unavailable.');
+ if(!state.editor.submit())throw new Error('Complete the Mathed expression before saving.');
+ const expression:Expression={type:'mathed',expression:state.editor.getDocument().expression};
+ validateExpression(expression,new Set(expressionVocabulary(state.doc).map(v=>v.id)));return expression;
+}

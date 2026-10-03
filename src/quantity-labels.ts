@@ -1,3 +1,5 @@
+import type {DiagramDocument} from './model';
+import {expressionLatex} from './expressions';
 import type {Variable} from './semantics';
 
 export function numericalText(value:number) {
@@ -17,6 +19,7 @@ export function unitLatex(unit:string) {
 export function numericalLabel(symbol:string,value?:number,unit='') {
   return value===undefined ? symbol : `${symbol}=${numericalText(value)}${unit && unit!=='1' ? (unit==='°'?'':'\\,')+unitLatex(unit) : ''}`;
 }
-export function quantityLabel(variable:Variable|undefined,symbol=variable?.symbol||'') {
+export function quantityLabel(variable:Variable|undefined,symbol=variable?.symbol||'',doc?:DiagramDocument) {
+  if(variable?.state==='expression'&&variable.expression&&doc)return `${symbol}=${expressionLatex(variable.expression,doc)}`;
   return numericalLabel(symbol,variable?.state==='known' ? variable.value : undefined,variable?.unit);
 }

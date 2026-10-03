@@ -14,7 +14,7 @@ export const propertyDefinitions = {
   extension: { name: 'Extension / compression', symbol: '\\Delta x', units: ['m', 'cm'] },
   surfaceChargeDensity: { name: 'Surface charge density', symbol: '\\sigma', units: ['C/m^2', 'µC/m^2'] }
 } satisfies Record<PropertyQuantity, { name: string; symbol: string; units: string[] }>;
-export interface PropertyDraft { symbol?: string; generatedSymbol?: boolean; state: 'known' | 'unknown'; unit: string; value?: number }
+export interface PropertyDraft { id?:string; expression?:Variable['expression']; symbol?: string; generatedSymbol?: boolean; state: 'known' | 'unknown' | 'expression'; unit: string; value?: number }
 export function canonicalSymbol(symbol: string) { return symbol.trim().replace(/\s|[{}]/g, ''); }
 export type Representation = 'circle' | 'rectangle' | 'point' | 'surface' | 'spring' | 'cable' | 'none';
 export const categoryNames: Record<ObjectCategory,string> = {ordinary:'Ordinary physical object',spatialPoint:'Spatial point',planetSurface:'Planet Surface',spring:'Spring',cable:'String/Cable',chargedPlate:'Charged Plate',fluid:'Fluid'};
@@ -64,10 +64,12 @@ export function saveObject(store: DocumentStore, draft: ObjectDraft): string {
         throw new Error(`The symbol ${symbol} is already used${owner ? ` by ${owner}` : ''}. Choose a distinct symbol, such as a different subscript.`);
       }
       if (!definition.units.includes(property.unit)) throw new Error(`Choose a supported unit for ${definition.name.toLowerCase()}.`);
-      if (!['known', 'unknown'].includes(property.state)) throw new Error('Choose Known or Unknown for each property.');
+      if (!['known', 'unknown','expression'].includes(property.state)) throw new Error('Choose Unknown, Known or Expression for each property.');
       if (property.state === 'known' && (property.value === undefined || !Number.isFinite(property.value) || (!propertySigned(key) && property.value < 0))) throw new Error(`${definition.name} needs a finite ${key === 'charge' ? '' : 'nonnegative '}numerical value.`);
       if(key==='surfaceChargeDensity' && property.state==='known' && property.value!==0 && (property.value! < 0)!==(polarity==='negative')) throw new Error('Plate polarity and signed surface charge density must agree.');
-      const variable: Variable = { id: previousProperties[key] || crypto.randomUUID(), ownerObjectId: id, quantity: key, symbol, generatedSymbol: property.generatedSymbol ?? !property.symbol, unit: property.unit, state: property.state };
+      const variable: Variable = { id: previousProperties[key] || property.id || crypto.randomUUID(), ownerObjectId: id, quantity: key, symbol, generatedSymbol: property.generatedSymbol ?? !property.symbol, unit: property.unit, state: property.state };
+      if(registry.some(v=>v.id===variable.id))throw new Error('Property variable identity is already used.');
+      if(property.state==='expression')variable.expression=property.expression;
       if (property.state === 'known') variable.value = property.value;
       definitions[key] = variable.id; registry.push(variable);
     }
@@ -119,7 +121,7 @@ export function objectDraft(store: DocumentStore, id?: string): ObjectDraft {
   for (const [key, variableId] of Object.entries(object?.properties || {})) {
     if (!(Object.hasOwn(propertyDefinitions, key))) continue;
     const variable = store.document.semantics.variables.find(v => v.id === variableId);
-    if (variable) properties[key as PropertyQuantity] = { symbol: variable.symbol, generatedSymbol: !!variable.generatedSymbol, unit: variable.unit || propertyDefinitions[key as PropertyQuantity].units[0], state: variable.state==='known'?'known':'unknown', value: variable.value };
+    if (variable) properties[key as PropertyQuantity] = { id:variable.id,expression:variable.expression,symbol: variable.symbol, generatedSymbol: !!variable.generatedSymbol, unit: variable.unit || propertyDefinitions[key as PropertyQuantity].units[0], state: variable.state||'unknown', value: variable.value };
   }
   return { id, category:object?.category || 'ordinary',polarity:object?.polarity || 'positive', name: object?.name || '', representation: g?.visible === false ? 'none' : (g?.kind as Representation) || 'circle', showName: g?.label?.showName ?? true, showProperties: g?.label?.showProperties ?? true, properties };
 }

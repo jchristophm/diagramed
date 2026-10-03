@@ -1,3 +1,4 @@
+import {fixtureOrientation} from './view-helpers';
 import {canvasPoint as transformedPoint,fixtureView} from './view-helpers';
 import {test,expect,type Page} from './test-fixture';
 import {readFile} from 'node:fs/promises';
@@ -22,8 +23,8 @@ test('reversed axes update signed conventions, retain threshold and persist acro
   const doc=await saved(page);expect(doc.presentation).toEqual(original.presentation);expect(doc.semantics.vectors).toEqual(original.semantics.vectors);expect(doc.semantics.variables).toEqual(original.semantics.variables);expect(doc.semantics.coordinateSystems[0]).toMatchObject({origin:[500,350],angle:37,reverseX,reverseY});
  }
  // Exact tolerance boundary is unaffected by either or both reversals.
- for(const [angle,count]of [[62,0],[61.9,2],[82,0],[82.1,2]]){await coordinates(page);await page.locator('#coordinate-angle').fill(String(angle));await submitCoordinates(page);await selectVector(page,symbol);await expect.poll(async()=>(await rendered(page)).components.length).toBe(count);}
- await coordinates(page);await page.locator('#coordinate-angle').fill('37');await page.locator('#coordinate-dimensions').selectOption('1');await expect(page.locator('#reverse-y-label')).toBeHidden();await expect(page.locator('#coordinate-reverse-y')).toBeChecked();await submitCoordinates(page);await selectVector(page,symbol);await expect.poll(async()=>(await rendered(page)).components.length).toBe(1);
+ for(const [angle,count]of [[62,0],[61.9,2],[82,0],[82.1,2]]){await coordinates(page);await fixtureOrientation(page,Number(String(angle)));await submitCoordinates(page);await selectVector(page,symbol);await expect.poll(async()=>(await rendered(page)).components.length).toBe(count);}
+ await coordinates(page);await fixtureOrientation(page,Number('37'));await page.locator('#coordinate-dimensions').selectOption('1');await expect(page.locator('#reverse-y-label')).toBeHidden();await expect(page.locator('#coordinate-reverse-y')).toBeChecked();await submitCoordinates(page);await selectVector(page,symbol);await expect.poll(async()=>(await rendered(page)).components.length).toBe(1);
  await coordinates(page);await page.locator('#coordinate-dimensions').selectOption('2');await expect(page.locator('#coordinate-reverse-y')).toBeVisible();await expect(page.locator('#coordinate-reverse-y')).toBeChecked();await submitCoordinates(page);await selectVector(page,symbol);await expect.poll(async()=>(await rendered(page)).components.length).toBe(2);
  // The handle rotates the reference axes independently of the reversed positive directions.
  await coordinates(page);await submitCoordinates(page);
