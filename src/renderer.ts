@@ -1,6 +1,7 @@
-import {angleGeometry,angleSymbol,invalidAngleReason} from './angles';
+import {componentAngleGeometry,componentAngleLabel,clearChangedComponentAngles} from './component-angles';
+import {quantityLabel} from './quantity-labels';
 import Konva from 'konva';
-import { coordinateBasis, graphicalComponents, deleteCoordinates } from './coordinates';
+import { coordinateBasis, graphicalComponents, deleteCoordinates, clearComponentAngleDefinitions } from './coordinates';
 import { DocumentStore, type DiagramDocument, type Graphic } from './model';
 import { renderMath } from './math';
 import { displayedVector, isZeroMotionVector, zeroMotionLabelGraphic } from './physics';
@@ -8,9 +9,6 @@ import { vectorLatex } from './naming';
 import { attachmentPoint, labelPosition, effectiveLabel } from './geometry';
 export class DiagramRenderer {
   readonly stage: Konva.Stage;
-  private angleLayer = new Konva.Layer();
-  private angleRevision = 0;
-  onAngleEdit: (id:string) => void = () => {};
   private grid = new Konva.Layer({ listening: false });
   private layer = new Konva.Layer();
   private controls = new Konva.Layer();
@@ -27,10 +25,11 @@ export class DiagramRenderer {
   onEdit: (element: Graphic) => void = () => {};
   onSelect: (element: Graphic | null) => void = () => {};
   private symbols(e: Graphic, doc = this.store.document) {
-    if(e.vectorId){const v=doc.semantics.vectors.find(v=>v.id===e.vectorId),m=doc.semantics.variables.find(variable=>variable.id===v?.variableId);if(v&&isZeroMotionVector(doc,v))return `${m!.symbol}=0\\,\\mathrm{${m!.unit}}`;return m?.symbol ? vectorLatex(doc.semantics.variables.find(variable=>variable.id===v?.variableId)!.symbol) : '';}
+    if(e.vectorId){const v=doc.semantics.vectors.find(v=>v.id===e.vectorId),m=doc.semantics.variables.find(variable=>variable.id===v?.variableId);return m ? quantityLabel(m,v&&isZeroMotionVector(doc,v)?m.symbol:vectorLatex(m.symbol)) : '';}
     const object = doc.semantics.objects.find(o => o.id === e.semanticId);
-    return Object.values(object?.properties || {}).map(id => doc.semantics.variables.find(v => v.id === id)?.symbol).filter(Boolean).join(',\\; ');
+    return Object.values(object?.properties || {}).map(id => quantityLabel(doc.semantics.variables.find(v => v.id === id))).filter(Boolean).join(',\\; ');
   }
+
   zoom = 1;
   onViewChange: () => void = () => {};
   private viewport: HTMLElement;
@@ -40,7 +39,7 @@ export class DiagramRenderer {
   constructor(private store: DocumentStore, private container: HTMLDivElement) {
     this.viewport = container.parentElement!; this.extent = document.querySelector<HTMLElement>('#document-extent')!;
     this.stage = new Konva.Stage({ container, width: 800, height: 600 });
-    this.stage.add(this.grid, this.layer, this.components, this.coordinates, this.origins, this.angleLayer, this.controls);
+    this.stage.add(this.grid, this.layer, this.components, this.coordinates, this.origins, this.controls);
     this.controls.add(this.transformer);
     this.stage.on('click tap', e => { if (e.target === this.stage) this.select(null); });
     new ResizeObserver(() => this.fit()).observe(this.viewport);
@@ -121,8 +120,8 @@ export class DiagramRenderer {
     this.grid.visible(grid.visible);
     for (const e of [...elements.filter(e=>e.kind==='surface'),...elements.filter(e=>e.kind!=='surface')]) await this.addNode(e);
     this.renderCoordinates();this.refreshOrigins(this.store.document);this.fit();
-    if(previousActiveVector && this.nodes.has(previousActiveVector)){this.activeVectorId=previousActiveVector;await this.refreshComponents();}
-    await this.renderAngles();this.stage.draw();
+    if(previousActiveVector && this.nodes.has(previousActiveVector)){this.select(previousActiveVector);await this.refreshComponents();}
+    this.stage.draw();
   }
   async addNode(record: Graphic) {
     let e=record; if(e.vectorId){const v=this.store.document.semantics.vectors.find(v=>v.id===e.vectorId);if(!v)return;const shown=displayedVector(this.store.document,v,e);if(!shown)return;e=shown;}
@@ -154,10 +153,11 @@ export class DiagramRenderer {
     node.on('click tap', () => this.select(e.id));
     node.on('dblclick dbltap', () => { if (e.semanticId || e.vectorId || e.kind === 'text' || e.kind === 'latex') this.onEdit(this.element(e.id)!); });
     node.on('dragmove', () => { if(e.kind==='surface'){node.position({x:e.x,y:this.snap(node.y())});}else node.position({ x: this.snap(node.x()), y: this.snap(node.y()) }); this.positionLabel(e.id); this.refreshAttachments(); });
-    node.on('dragend', () => { this.store.update(e.id, { x: node.x(), y: node.y(), }); this.select(e.id); });
+    node.on('dragend', () => { const before=structuredClone(this.store.document);Object.assign(this.element(e.id)!,{x:node.x(),y:node.y()});clearChangedComponentAngles(this.store.document,before);this.store.changed();this.select(e.id); });
     node.on('transformend', () => {
+      const before=structuredClone(this.store.document);
       const patch = { x: this.snap(node.x()), y: this.snap(node.y()), rotation: node.rotation(), scaleX: node.scaleX(), scaleY: node.scaleY(), ...(node instanceof Konva.Line?{points:node.points() as Graphic['points']}:{}) };
-      node.position({ x: patch.x, y: patch.y }); this.store.update(e.id, patch); this.positionLabel(e.id); this.refreshAttachments(); this.select(e.id);
+      node.position({ x: patch.x, y: patch.y }); Object.assign(this.element(e.id)!,patch);clearChangedComponentAngles(this.store.document,before);this.store.changed(); this.positionLabel(e.id); this.refreshAttachments(); this.select(e.id);
     });
     node.on('transform', () => {this.positionLabel(e.id);this.refreshAttachments();});
     this.historyGesture(node,true);this.layer.draw();
@@ -190,7 +190,7 @@ export class DiagramRenderer {
   private refreshAttachments(){
     const doc=structuredClone(this.store.document);for(const g of doc.presentation.elements)if(g.semanticId && this.nodes.has(g.id))Object.assign(g,this.currentGraphic(g.id));
     for(const g of doc.presentation.elements){if(!g.vectorId)continue;const v=doc.semantics.vectors.find(v=>v.id===g.vectorId),node=this.nodes.get(g.id);if(!v||!node)continue;const current=displayedVector(doc,v,g);if(!current)continue;node.position({x:current.x,y:current.y});if(node instanceof Konva.Line)node.points(current.points);this.positionLabel(g.id);}
-    this.refreshOrigins(doc); void this.refreshComponents();void this.renderAngles(doc);
+    this.refreshOrigins(doc); void this.refreshComponents();
   }
   private refreshOrigins(doc:DiagramDocument){
     this.origins.destroyChildren();const counts=new Map<string,number>();
@@ -200,18 +200,15 @@ export class DiagramRenderer {
   }
   private element(id: string) { return this.store.document.presentation.elements.find(e => e.id === id); }
   select(id: string | null) {
-    this.angleLayer.find<Konva.Shape>('.angle-arc').forEach(n=>n.stroke(n.getAttr('angleId')===id?'orange':'#735889'));
     const old = this.selectedId && this.nodes.get(this.selectedId);
     if (old) { const e = this.element(this.selectedId!); if (e && !['text', 'latex'].includes(e.kind)) old.stroke(e.stroke); old.draggable(!e?.vectorId); }
     this.controls.destroyChildren(); this.transformer = new Konva.Transformer({ rotateEnabled: true, ignoreStroke: true, padding: 4, anchorSize: 12 }); this.controls.add(this.transformer);
     this.selectedId = id;
     const selectedVector = id && this.element(id)?.vectorId;
-    if (selectedVector) this.activeVectorId = id;
-    else if (!id || !this.store.document.semantics.coordinateSystems.some(c => c.id === id)) this.activeVectorId = null;
+    this.activeVectorId = selectedVector ? id : null;
     void this.refreshComponents();
     this.onSelect(id ? this.element(id) || null : null);
     if (!id) { this.stage.batchDraw(); return; }
-    if(this.store.document.semantics.angles?.some(a=>a.id===id)){this.stage.batchDraw();return;}
     if (this.store.document.semantics.coordinateSystems.some(c => c.id === id)) { this.coordinateHandles(); this.stage.batchDraw(); return; }
     const e = this.element(id), node = this.nodes.get(id);
     if (!e || !node) return;
@@ -231,7 +228,7 @@ export class DiagramRenderer {
           const local = node.getAbsoluteTransform().copy().invert().point(this.stage.getAbsoluteTransform().point(target.position()));
           const points = [...this.element(id)!.points] as Graphic['points']; points[index] = local.x; points[index + 1] = local.y;
           if(v && v.role==='friction'){const normal=this.store.document.semantics.vectors.find(n=>n.interactionId===v.interactionId && n.role==='normal');const ng=normal && this.store.document.presentation.elements.find(g=>g.vectorId===normal.id);if(ng){const a=Math.atan2(ng.points[3],ng.points[2])+Math.PI/2,ux=Math.cos(a),uy=Math.sin(a),length=Math.max(20,local.x*ux+local.y*uy);points[2]=ux*length;points[3]=uy*length;const absolute=node.getAbsoluteTransform().point({x:points[2],y:points[3]});handle.position(this.stage.getAbsoluteTransform().copy().invert().point(absolute));hit.position(handle.position());}}
-          (node as Konva.Line).points(points); this.store.update(id, { points }); this.refreshAttachments(); this.stage.batchDraw();
+          const before=structuredClone(this.store.document);(node as Konva.Line).points(points); Object.assign(this.element(id)!,{points});clearChangedComponentAngles(this.store.document,before);this.store.changed(); this.refreshAttachments(); this.stage.batchDraw();
         };
         handle.on('dragmove', () => move(handle)); hit.on('dragmove', () => move(hit));
         this.historyGesture(handle);this.historyGesture(hit);this.controls.add(handle, hit);
@@ -264,7 +261,7 @@ export class DiagramRenderer {
     // Only the origin drags the frame; vector/object nodes are independent.
     origin.draggable(true);
     origin.on('dragstart',()=>this.select(system.id));
-    origin.on('dragmove',()=>{system.origin=[group.x()+origin.x(),group.y()+origin.y()];group.position({x:system.origin[0],y:system.origin[1]});origin.position({x:0,y:0});this.store.changed();void this.renderAngles();this.select(system.id);});
+    origin.on('dragmove',()=>{system.origin=[group.x()+origin.x(),group.y()+origin.y()];group.position({x:system.origin[0],y:system.origin[1]});origin.position({x:0,y:0});this.store.changed();this.select(system.id);});
     this.historyGesture(origin);this.coordinates.add(group);
   }
   private coordinateHandles() {
@@ -272,7 +269,7 @@ export class DiagramRenderer {
     const basis=coordinateBasis(system.angle),distance=105;
     const handle=new Konva.Circle({name:'coordinate-rotation-handle',x:system.origin[0]+basis.x[0]*distance,y:system.origin[1]+basis.x[1]*distance,radius:8,fill:'#ff0',stroke:'#42566b',hitStrokeWidth:24,draggable:true});
     handle.hitFunc((context,shape)=>{context.beginPath();context.arc(0,0,22/(this.stage.scaleX()||1),0,Math.PI*2);context.closePath();context.fillStrokeShape(shape);});
-    handle.on('dragmove',()=>{const dx=handle.x()-system.origin[0],dy=handle.y()-system.origin[1];if(Math.hypot(dx,dy)<1)return;system.angle=Math.atan2(-dy,dx)*180/Math.PI;this.store.changed();this.renderCoordinates();void this.refreshComponents();void this.renderAngles();this.stage.batchDraw();});
+    handle.on('dragmove',()=>{const dx=handle.x()-system.origin[0],dy=handle.y()-system.origin[1];if(Math.hypot(dx,dy)<1)return;const angle=Math.atan2(-dy,dx)*180/Math.PI;if(Math.abs(angle-system.angle)>1e-8)clearComponentAngleDefinitions(this.store.document);system.angle=angle;this.store.changed();this.renderCoordinates();void this.refreshComponents();this.stage.batchDraw();});
     handle.on('dragend',()=>this.select(system.id));this.historyGesture(handle);this.controls.add(handle);
   }
   private async refreshComponents() {
@@ -292,32 +289,17 @@ export class DiagramRenderer {
       const latex=vectorLatex(indexed),image=await renderMath(latex,16);
       group.add(new Konva.Image({name:'component-label',axis:projection.axis,math:latex,image,width:image.width/2,height:image.height/2,x:x+projection.dx+8,y:y+projection.dy+8}));
     }
+    if(vector.showAngles!==false)for(const geometry of componentAngleGeometry(graphic,this.store.document)){
+      const {start,sweep,axis}=geometry,radius=axis==='x'?32:42;
+      const angle=new Konva.Group({name:'component-angle',vectorId:vector.id,axis,x:graphic.x,y:graphic.y});
+      angle.add(new Konva.Shape({name:'angle-arc',axis,stroke:'#735889',strokeWidth:2,
+        sceneFunc:(context,shape)=>{context.beginPath();context.arc(0,0,radius,-start,-start-sweep,sweep>0);context.strokeShape(shape);}}));
+      const math=componentAngleLabel(this.store.document,vector,axis),image=await renderMath(math,16),mid=start+sweep/2;
+      angle.add(new Konva.Image({name:'angle-label',axis,math,image,width:image.width/2,height:image.height/2,x:(radius+18)*Math.cos(mid)+(Math.cos(mid)>=0?8:-8-image.width/2),y:-(radius+18)*Math.sin(mid)-image.height/4}));
+      group.add(angle);
+    }
     if(revision!==this.componentRevision){group.destroy();return;}
     this.components.add(group);this.components.batchDraw();
-  }
-  private async renderAngles(doc=this.store.document) {
-    const revision=++this.angleRevision;
-    const nodes:Konva.Group[]=[];const warnings:string[]=[];
-    for(const a of doc.semantics.angles??[]){
-      const reason=invalidAngleReason(doc,a);if(reason){warnings.push(reason);continue;}if(!a.visible)continue;
-      const geometry=angleGeometry(doc,a)!;const {start,sweep}=geometry,radius=42;
-      const group=new Konva.Group({id:a.id,name:'semantic-angle',x:a.presentation.x,y:a.presentation.y,draggable:true});
-      const rays=new Konva.Line({points:[55*Math.cos(start),-55*Math.sin(start),0,0,55*Math.cos(start+sweep),-55*Math.sin(start+sweep)],stroke:'#735889',opacity:.45,strokeWidth:1,dash:[3,4],listening:false});group.add(rays);
-      const arc=new Konva.Shape({name:'angle-arc',angleId:a.id,stroke:this.selectedId===a.id?'orange':'#735889',strokeWidth:2,hitStrokeWidth:22/this.zoom,
-        sceneFunc:(context,shape)=>{context.beginPath();context.arc(0,0,radius,-start,-start-sweep,sweep>0);context.strokeShape(shape);}});group.add(arc);
-      if(Math.abs(sweep)>.05){const end=start+sweep,previous=end-Math.sign(sweep)*.12;group.add(new Konva.Arrow({name:'angle-arrowhead',points:[radius*Math.cos(previous),-radius*Math.sin(previous),radius*Math.cos(end),-radius*Math.sin(end)],stroke:'#735889',fill:'#735889',strokeWidth:2,pointerLength:6,pointerWidth:6,listening:false}));}
-      const symbol=angleSymbol(doc,a)+(a.value===undefined?'':`=${a.value}^\\circ`),img=await renderMath(symbol,16);
-      const mid=start+sweep/2,anchor={x:65*Math.cos(mid)-img.width/4,y:-65*Math.sin(mid)-img.height/4};
-      const label=new Konva.Image({name:'angle-label',math:symbol,image:img,width:img.width/2,height:img.height/2,x:anchor.x+a.presentation.labelOffset[0],y:anchor.y+a.presentation.labelOffset[1],draggable:true});group.add(label);
-      group.on('click tap',()=>this.select(a.id));group.on('dblclick dbltap',()=>this.onAngleEdit(a.id));
-      group.on('dragmove',()=>group.position({x:this.snap(group.x()),y:this.snap(group.y())}));
-      group.on('dragend',event=>{if(event.target!==group)return;const record=this.store.document.semantics.angles?.find(n=>n.id===a.id);if(record){record.presentation.x=group.x();record.presentation.y=group.y();this.store.changed();}this.select(a.id);});
-      label.on('dragstart',event=>{event.cancelBubble=true;});label.on('dragend',event=>{event.cancelBubble=true;const record=this.store.document.semantics.angles?.find(n=>n.id===a.id);if(record){record.presentation.labelOffset=[label.x()-anchor.x,label.y()-anchor.y];this.store.changed();}this.select(a.id);});
-      this.historyGesture(group);this.historyGesture(label);nodes.push(group);
-    }
-    if(revision!==this.angleRevision){nodes.forEach(n=>n.destroy());return;}
-    this.angleLayer.destroyChildren();nodes.forEach(n=>this.angleLayer.add(n));this.angleLayer.batchDraw();
-    const warning=document.querySelector<HTMLElement>('#angle-warning');if(warning){warning.hidden=!warnings.length;warning.textContent=warnings.length?`${warnings.length} angle(s) need attention. Open Elements → Angles to edit or delete them.`:'';}
   }
   toggleGrid() { const p = this.store.document.presentation; p.grid.visible = !p.grid.visible; this.grid.visible(p.grid.visible); this.store.changed(); this.stage.draw(); }
 }

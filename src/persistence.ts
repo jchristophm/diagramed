@@ -1,4 +1,3 @@
-import {directionExists} from './angles';
 import { newGraphic, type DiagramDocument } from './model';
 import { canonicalSymbol, propertyDefinitions, propertySigned, categoryNames, categoryProperties } from './objects';
 import {assertExpressions} from './expressions';
@@ -68,22 +67,9 @@ export function parseDocument(text: string): DiagramDocument {
       if (key === 'components' && !['x', 'y'].includes(entry.axis as string)) fail('component axis must be x or y.');
     }
   }
-  if(semantics.angles!==undefined)for(const item of list(semantics.angles,'angles')){
-    const a=object(item,'angle');string(a.id,'angle identity');
-    if(!a.id || semanticIds.has(a.id as string))fail('angle identities must be unique and nonempty.');semanticIds.add(a.id as string);
-    for(const key of ['from','to']){
-      const r=object(a[key],'angle direction');
-      if(!['vector','component','axis'].includes(r.type as string))fail('unsupported angle direction source.');
-      if(r.type!=='axis')string(r.vectorId,'angle vector reference');
-      if(r.type!=='vector'){string(r.coordinateSystemId,'angle coordinate reference');if(!['x','y'].includes(r.axis as string))fail('invalid angle direction axis.');}
-      if(r.type==='axis' && r.sign!==1 && r.sign!==-1)fail('invalid angle axis sign.');
-    }
-    if(a.value!==undefined)number(a.value,'angle value');
-    if(typeof a.visible!=='boolean')fail('angle visibility must be boolean.');
-    const view=object(a.presentation,'angle presentation');number(view.x,'angle position');number(view.y,'angle position');
-    const offset=list(view.labelOffset,'angle label offset');if(offset.length!==2)fail('angle label offset requires two coordinates.');offset.forEach(v=>number(v,'angle label offset'));
-  }
   const result = structuredClone(value) as DiagramDocument;
+  // Obsolete standalone Angles have no supported semantic meaning in this model.
+  delete (result.semantics as unknown as ObjectValue).angles;
   if (d.version === 1) {
     // Upgrade only explicit semantic definitions. Never tag legacy drawing primitives.
     result.version = 3;
@@ -113,7 +99,12 @@ export function parseDocument(text: string): DiagramDocument {
   return result;
 }
 export function validateRelationships(doc: DiagramDocument) {
-  for(const a of doc.semantics.angles??[])if(!directionExists(doc,a.from)||!directionExists(doc,a.to))fail('angle references a missing direction source.');
+  for(const v of doc.semantics.vectors){
+    if(v.showAngles!==undefined && typeof v.showAngles!=='boolean')fail('angle visibility must be boolean.');
+    if(v.componentAngle!==undefined){const a=object(v.componentAngle,'component angle'),c=doc.semantics.coordinateSystems[0];
+      if(!c || c.dimensions!==2 || a.coordinateSystemId!==c.id || !['x','y'].includes(a.axis as string) || typeof a.value!=='number' || !Number.isFinite(a.value) || a.value<0 || a.value>90)fail('invalid component-angle definition.');
+    }
+  }
   const objects = new Map(doc.semantics.objects.map(o => [o.id, o]));
   const variables = new Map(doc.semantics.variables.map(v => [v.id, v]));
   const symbols = new Set<string>();
@@ -191,7 +182,6 @@ export function migrateDocumentSpace(doc: DiagramDocument) {
  const cx=canvas.width/2,cy=canvas.height/2;
  for(const g of doc.presentation.elements){g.x-=cx;g.y-=cy;}
  for(const c of doc.semantics.coordinateSystems){c.origin=[c.origin[0]-cx,c.origin[1]-cy];}
- for(const a of doc.semantics.angles??[]){a.presentation.x-=cx;a.presentation.y-=cy;}
  canvas.width=Math.max(3200,canvas.width);canvas.height=Math.max(2400,canvas.height);
  canvas.minX=-canvas.width/2;canvas.minY=-canvas.height/2;canvas.coordinateSpace='grid';
  doc.presentation.grid.size=Math.min(10,doc.presentation.grid.size);

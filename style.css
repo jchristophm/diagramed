@@ -145,10 +145,10 @@ fieldset { margin:12px 0; padding:0 12px 12px; border:1px solid #ddd; border-rad
 #zoom-controls [data-action="zoom-reset"] { min-width:54px; font-variant-numeric:tabular-nums; }
 @media(max-width:600px){#toolbar-bottom{gap:3px;padding:0 3px;}#toolbar-bottom>button{min-width:40px;padding:2px 4px;}#zoom-controls button{min-width:28px;padding:2px 3px;}#zoom-controls [data-action="zoom-reset"]{min-width:48px;}}
 
-#angle-warning {position:fixed;bottom:54px;left:12px;right:12px;margin:0;padding:8px;background:#fff3d2;color:#594600;z-index:10;font-size:13px;}
-#angle-symbol {display:block;min-height:32px;margin-top:8px;}
-#angle-error{color:#a00020;}
 
 #zoom-controls button {min-width:44px;}
 @media(max-width:600px){#toolbar-bottom>button{min-width:44px;}#zoom-controls button{min-width:44px;}#zoom-controls [data-action="zoom-reset"]{min-width:54px;}}
 @media(max-width:390px){#toolbar-bottom{justify-content:flex-start;overflow-x:auto;}}
+
+#component-angle-fields {margin:12px 0;border:1px solid #d4dbe1;border-radius:6px;}
+#component-angle-fields:disabled {opacity:.55;}

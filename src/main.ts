@@ -1,5 +1,3 @@
-import {initializeAngles} from './angle-ui';
-import {deleteAngle} from './angles';
 import {initializeCoordinates} from './coordinate-ui';
 import {initializeVectors} from './vector-ui';
 import {deleteVector} from './physics';
@@ -16,7 +14,6 @@ const store = new DocumentStore(newDocument());
 const renderer = new DiagramRenderer(store, container);
 const vectorUI=initializeVectors(store,renderer);
 const coordinateUI=initializeCoordinates(store,renderer);
-const angleUI=initializeAngles(store,renderer);
 const dialog = $<HTMLDialogElement>('#object-dialog'), status = $('#status');
 for(const [key,name] of Object.entries(categoryNames)){const option=document.createElement('option');option.value=key;option.textContent=name;$<HTMLSelectElement>('#object-type').append(option);}
 function configureCategory(category:ObjectCategory){
@@ -106,7 +103,6 @@ $('#legacy-form').addEventListener('submit', async event => {
   catch (error) { report(error); } finally { busy = false; }
 });
 async function removeSelected() {
-  if(store.document.semantics.angles?.some(a=>a.id===renderer.selectedId)){deleteAngle(store,renderer.selectedId!);await renderer.render();return;}
   const selected=store.document.presentation.elements.find(e=>e.id===renderer.selectedId);if(selected?.vectorId){deleteVector(store,selected.vectorId);await renderer.render();return;}
   const id = selectedObject();
   if (id) { deleteObject(store, id); selectedObjectId = undefined; await renderer.render(); }
@@ -117,8 +113,6 @@ async function action(name: string) {
   try {
     if (name === 'object') openObject();
     else if (name === 'collection') showCollection();
-    else if (name === 'angle') angleUI.open();
-    else if (name === 'angles') angleUI.collection();
     else if (name === 'coordinates') coordinateUI.open();
     else if (name === 'edit') {const g=store.document.presentation.elements.find(e=>e.id===renderer.selectedId);if(g?.vectorId){vectorUI.open(g.vectorId);return;} const id = selectedObject(); if (id) openObject(id); else report('Select an object to edit its definition.'); }
     else if (name === 'zoom-in') renderer.setZoom(renderer.zoom + .25);

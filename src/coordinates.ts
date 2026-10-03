@@ -1,4 +1,3 @@
-import {assertNoAngleDependents} from './angles';
 import type { CoordinateSystem } from './semantics';
 import type { Graphic } from './model';
 import { DocumentStore } from './model';
@@ -32,15 +31,21 @@ export function saveCoordinates(store: DocumentStore, draft: Omit<CoordinateSyst
   const systems = store.document.semantics.coordinateSystems;
   if (systems.length > 1 || (systems.length && systems[0].id !== draft.id) || (draft.id && !systems.some(c => c.id === draft.id))) throw new Error('Only one coordinate system is supported.');
   const system = {...draft, id: draft.id || crypto.randomUUID(), visible: draft.visible ?? true};
+  const previous=systems[0];
+  if(previous && (previous.angle!==system.angle || previous.dimensions!==system.dimensions || !!previous.reverseX!==!!system.reverseX || !!previous.reverseY!==!!system.reverseY)) clearComponentAngleDefinitions(store.document);
   store.document.semantics.coordinateSystems = [system];
   // A hidden y axis does not invalidate retained semantic components.
   store.changed();
   return system.id;
 }
 export function deleteCoordinates(store: DocumentStore) {
-  assertNoAngleDependents(store.document,[],store.document.semantics.coordinateSystems[0]?.id);
+  clearComponentAngleDefinitions(store.document);
   store.document.semantics.coordinateSystems = [];
   store.document.semantics.components = [];
   for (const graphic of store.document.presentation.elements) if (graphic.vectorId) delete graphic.showComponents;
   store.changed();
+}
+
+export function clearComponentAngleDefinitions(doc: import('./model').DiagramDocument) {
+  for(const vector of doc.semantics.vectors) delete vector.componentAngle;
 }

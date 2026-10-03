@@ -7,24 +7,11 @@ export type ObjectCategory = 'ordinary' | 'spatialPoint' | 'planetSurface' | 'sp
 export interface PhysicalObject { category?: ObjectCategory; abbreviation?: string; abbreviationName?: string; polarity?: 'positive' | 'negative'; id: string; name: string; properties?: Record<string, string> }
 export interface Interaction { id: string; objectIds: string[]; kind: string; sourceId?: string; targetId?: string; model?: 'nearSurface'|'universal'|'pointSource'|'uniform'|'ordinary'|'spring'|'cable'; separationId?: string; properties?: Record<string,string>; friction?: 'static'|'kinetic'; resultantVisible?: boolean }
 export interface CoordinateSystem { id: string; dimensions: 1 | 2; origin: [number, number]; angle: number; visible?: boolean; reverseX?: boolean; reverseY?: boolean }
-export interface PhysicalVector { id: string; kind: 'force' | 'field' | 'motion' | 'separation'; fromId?: string; toId?: string; sourceId?: string; separationId?: string; fieldType?: 'gravitational'|'electric'; motionType?: 'velocity'|'acceleration'|'displacement'; role?: 'normal'|'friction'|'resultant'; variableId: string; objectId?: string; interactionId?: string }
+export interface ComponentAngleDefinition { coordinateSystemId: string; axis: 'x' | 'y'; value: number }
+export interface PhysicalVector { showAngles?: boolean; componentAngle?: ComponentAngleDefinition; id: string; kind: 'force' | 'field' | 'motion' | 'separation'; fromId?: string; toId?: string; sourceId?: string; separationId?: string; fieldType?: 'gravitational'|'electric'; motionType?: 'velocity'|'acceleration'|'displacement'; role?: 'normal'|'friction'|'resultant'; variableId: string; objectId?: string; interactionId?: string }
 export interface VectorComponent { id: string; vectorId: string; coordinateSystemId: string; axis: 'x' | 'y'; variableId: string }
 export interface Semantics {
-  angles?: SemanticAngle[];
   objects: PhysicalObject[]; interactions: Interaction[]; variables: Variable[];
   vectors: PhysicalVector[]; coordinateSystems: CoordinateSystem[]; components: VectorComponent[];
 }
 export const emptySemantics = (): Semantics => ({ objects: [], interactions: [], variables: [], vectors: [], coordinateSystems: [], components: [] });
-
-export type DirectionReference =
-  | { type: 'vector'; vectorId: string }
-  | { type: 'component'; vectorId: string; coordinateSystemId: string; axis: 'x' | 'y' }
-  | { type: 'axis'; coordinateSystemId: string; axis: 'x' | 'y'; sign: 1 | -1 };
-export interface SemanticAngle {
-  id: string;
-  from: DirectionReference;
-  to: DirectionReference;
-  value?: number; // Explicit degrees only; never inferred from drawing geometry.
-  visible: boolean;
-  presentation: { x: number; y: number; labelOffset: [number, number] };
-}
