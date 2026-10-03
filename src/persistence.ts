@@ -41,6 +41,18 @@ export function parseDocument(text: string): DiagramDocument {
     if(e.vectorId!==undefined)string(e.vectorId,'vector identity');
     if (e.semanticId !== undefined) string(e.semanticId, 'semantic identity');
     if (e.showComponents !== undefined && typeof e.showComponents !== 'boolean') fail('component visibility must be true or false.');
+    if(e.decompositionLabels!==undefined){
+      const labels=object(e.decompositionLabels,'decomposition label offsets');
+      for(const [kind,values] of Object.entries(labels)){
+        if(!['components','angles'].includes(kind))fail('unsupported decomposition label kind.');
+        for(const [axis,value] of Object.entries(object(values,'decomposition label axes'))){
+          if(!['x','y'].includes(axis))fail('unsupported decomposition label axis.');
+          const offset=list(value,'decomposition label offset');
+          if(offset.length!==2)fail('decomposition label offset requires two coordinates.');
+          offset.forEach(v=>number(v,'decomposition label offset'));
+        }
+      }
+    }
     if (e.visible !== undefined && typeof e.visible !== 'boolean') fail('element visibility must be true or false.');
     if (e.label !== undefined) {
       const label = object(e.label, 'label presentation');

@@ -13,7 +13,7 @@ export class DiagramRenderer {
   private layer = new Konva.Layer();
   private controls = new Konva.Layer();
   private coordinates = new Konva.Layer();
-  private components = new Konva.Layer({listening:false});
+  private components = new Konva.Layer();
   private componentRevision = 0;
   private activeVectorId: string | null = null;
   onCoordinateEdit: () => void = () => {};
@@ -111,7 +111,7 @@ export class DiagramRenderer {
     await Promise.all(doc.presentation.elements.filter(e => (e.semanticId || e.vectorId) && e.visible !== false && e.label?.showProperties && this.symbols(e, doc)).map(e => renderMath(this.symbols(e, doc), 16)));
   }
   async render() {
-    const previousActiveVector=this.activeVectorId;
+    const previousActiveVector=this.activeVectorId,previousSelection=this.selectedId;
     await this.prepare(this.store.document);
     this.select(null); this.layer.destroyChildren(); this.nodes.clear(); this.labels.clear(); this.grid.destroyChildren();
     const { canvas, grid, elements } = this.store.document.presentation;
@@ -120,7 +120,11 @@ export class DiagramRenderer {
     this.grid.visible(grid.visible);
     for (const e of [...elements.filter(e=>e.kind==='surface'),...elements.filter(e=>e.kind!=='surface')]) await this.addNode(e);
     this.renderCoordinates();this.refreshOrigins(this.store.document);this.fit();
-    if(previousActiveVector && this.nodes.has(previousActiveVector)){this.select(previousActiveVector);await this.refreshComponents();}
+    if(previousActiveVector && this.nodes.has(previousActiveVector)){
+      this.activeVectorId=previousActiveVector;
+      this.select(this.store.document.semantics.coordinateSystems.some(c=>c.id===previousSelection)?previousSelection:previousActiveVector);
+      await this.refreshComponents();
+    }
     this.stage.draw();
   }
   async addNode(record: Graphic) {
@@ -205,7 +209,8 @@ export class DiagramRenderer {
     this.controls.destroyChildren(); this.transformer = new Konva.Transformer({ rotateEnabled: true, ignoreStroke: true, padding: 4, anchorSize: 12 }); this.controls.add(this.transformer);
     this.selectedId = id;
     const selectedVector = id && this.element(id)?.vectorId;
-    this.activeVectorId = selectedVector ? id : null;
+    if(selectedVector)this.activeVectorId=id;
+    else if(!this.store.document.semantics.coordinateSystems.some(c=>c.id===id))this.activeVectorId=null;
     void this.refreshComponents();
     this.onSelect(id ? this.element(id) || null : null);
     if (!id) { this.stage.batchDraw(); return; }
@@ -272,6 +277,16 @@ export class DiagramRenderer {
     handle.on('dragmove',()=>{const dx=handle.x()-system.origin[0],dy=handle.y()-system.origin[1];if(Math.hypot(dx,dy)<1)return;const angle=Math.atan2(-dy,dx)*180/Math.PI;if(Math.abs(angle-system.angle)>1e-8)clearComponentAngleDefinitions(this.store.document);system.angle=angle;this.store.changed();this.renderCoordinates();void this.refreshComponents();this.stage.batchDraw();});
     handle.on('dragend',()=>this.select(system.id));this.historyGesture(handle);this.controls.add(handle);
   }
+  private decompositionLabel(label:Konva.Image,record:Graphic,kind:'components'|'angles',axis:'x'|'y',anchor:{x:number;y:number}) {
+    const offset=record.decompositionLabels?.[kind]?.[axis] || [0,0];
+    label.position({x:anchor.x+offset[0],y:anchor.y+offset[1]});label.draggable(true);
+    label.hitFunc((context,shape)=>{context.beginPath();context.rect(0,0,Math.max(label.width(),30/this.zoom),Math.max(label.height(),20/this.zoom));context.closePath();context.fillStrokeShape(shape);});
+    label.on('dragend',()=>{
+      const current=this.element(record.id)!;
+      this.store.update(record.id,{decompositionLabels:{...current.decompositionLabels,[kind]:{...current.decompositionLabels?.[kind],[axis]:[label.x()-anchor.x,label.y()-anchor.y]}}});
+    });
+    this.historyGesture(label);
+  }
   private async refreshComponents() {
     const revision=++this.componentRevision;this.components.destroyChildren();
     const id=this.activeVectorId,system=this.store.document.semantics.coordinateSystems[0];
@@ -281,26 +296,32 @@ export class DiagramRenderer {
     const vector=this.store.document.semantics.vectors.find(v=>v.id===record.vectorId)!;
     const symbol=this.store.document.semantics.variables.find(v=>v.id===vector.variableId)?.symbol || '';
     const group=new Konva.Group({name:'vector-components',vectorId:vector.id});
+    // Compute default anchors independently of manual offsets so redraw/reload
+    // cannot reposition another label after a drag.
     const obstacles=[...this.labels.values()].map(label=>label.getClientRect({relativeTo:this.stage}));
     for(const projection of projections){
       const x=graphic.x,y=graphic.y;
-      group.add(new Konva.Arrow({name:'vector-component',axis:projection.axis,coordinateDirection:projection.direction,points:[x,y,x+projection.dx,y+projection.dy],stroke:record.stroke,fill:record.stroke,strokeWidth:2,dash:[2,5],pointerLength:7,pointerWidth:7}));
+      group.add(new Konva.Arrow({name:'vector-component',listening:false,axis:projection.axis,coordinateDirection:projection.direction,points:[x,y,x+projection.dx,y+projection.dy],stroke:record.stroke,fill:record.stroke,strokeWidth:2,dash:[2,5],pointerLength:7,pointerWidth:7}));
       // Append the coordinate axis to the existing participant subscripts.
       const indexed=symbol.endsWith('}')?symbol.slice(0,-1)+','+projection.axis+'}':symbol+'_{'+projection.axis+'}';
       const latex=vectorLatex(indexed),image=await renderMath(latex,16);
-      const label=new Konva.Image({name:'component-label',axis:projection.axis,math:latex,image,width:image.width/2,height:image.height/2,x:x+projection.dx+8,y:y+projection.dy+8});group.add(label);
-      obstacles.push({x:label.x(),y:label.y(),width:label.width(),height:label.height()});
+      const position={x:x+projection.dx+8,y:y+projection.dy+8};
+      const label=new Konva.Image({name:'component-label',axis:projection.axis,math:latex,image,width:image.width/2,height:image.height/2,...position});
+      obstacles.push({...position,width:label.width(),height:label.height()});
+      this.decompositionLabel(label,record,'components',projection.axis,position);group.add(label);
     }
     if(vector.showAngles!==false)for(const geometry of componentAngleGeometry(graphic,this.store.document)){
       const {start,sweep,axis}=geometry,radius=axis==='x'?32:42;
       const angle=new Konva.Group({name:'component-angle',vectorId:vector.id,axis,x:graphic.x,y:graphic.y});
-      angle.add(new Konva.Shape({name:'angle-arc',axis,stroke:'#735889',strokeWidth:2,
+      angle.add(new Konva.Shape({name:'angle-arc',listening:false,axis,stroke:'#735889',strokeWidth:2,
         sceneFunc:(context,shape)=>{context.beginPath();context.arc(0,0,radius,-start,-start-sweep,sweep>0);context.strokeShape(shape);}}));
       const math=componentAngleLabel(this.store.document,vector,axis),image=await renderMath(math,16),mid=start+sweep/2;
       const preferred={x:graphic.x+(radius+18)*Math.cos(mid)+(Math.cos(mid)>=0?8:-8-image.width/2),y:graphic.y-(radius+18)*Math.sin(mid)-image.height/4};
       const position=overlayLabelPosition(preferred,image.width/2,image.height/2,obstacles);
       obstacles.push({...position,width:image.width/2,height:image.height/2});
-      angle.add(new Konva.Image({name:'angle-label',axis,math,image,width:image.width/2,height:image.height/2,x:position.x-graphic.x,y:position.y-graphic.y}));
+      const anchor={x:position.x-graphic.x,y:position.y-graphic.y};
+      const label=new Konva.Image({name:'angle-label',axis,math,image,width:image.width/2,height:image.height/2,...anchor});
+      this.decompositionLabel(label,record,'angles',axis,anchor);angle.add(label);
       group.add(angle);
     }
     if(revision!==this.componentRevision){group.destroy();return;}

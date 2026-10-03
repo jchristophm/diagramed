@@ -14,3 +14,14 @@ it('historic generic normal notation corrects without changing IDs or unrelated 
 it('historical automatic defaults adopt tip placement without rewriting saved offsets',()=>{const s=new DocumentStore(),g=newGraphic('arrow',s.document);g.vectorId='legacy-vector';g.label={showName:false,showProperties:true,offsetX:12,offsetY:12};g.points=[0,0,100,0];const old=structuredClone(g.label);expect(labelPosition(g,20,20).x).toBeGreaterThan(g.x+100);expect(g.label).toEqual(old);});
 
 it('automatic tip labels stay inside the canvas while deliberate manual offsets remain unrestricted',()=>{const s=new DocumentStore(),g=newGraphic('arrow',s.document);g.label={placement:'vectorTip',showName:false,showProperties:true,offsetX:0,offsetY:0};g.x=300;g.y=20;g.points=[0,0,70,-15];const p=labelPosition(g,80,25,true,{width:380,height:600});expect(p.x+80).toBeLessThanOrEqual(376);expect(p.y).toBeGreaterThanOrEqual(4);g.label.offsetX=50;expect(labelPosition(g,80,25,true,{width:380,height:600}).x).toBe(p.x+50);});
+
+it('decomposition offsets round trip as relative presentation data and preserve semantic state',()=>{
+ const s=new DocumentStore(),book=make(s,'Book'),v=saveVector(s,{kind:'velocity',targetId:book,magnitude:{state:'unknown',unit:'m/s'}}),g=vectorGraphic(s.document,v)!;
+ const semantics=structuredClone(s.document.semantics),points=[...g.points];
+ g.decompositionLabels={components:{x:[25,-12],y:[-30,45]},angles:{x:[5,15],y:[-20,-10]}};
+ const reopened=parseDocument(serializeDocument(s.document));expect(reopened.presentation.elements.find(e=>e.id===g.id)!.decompositionLabels).toEqual(g.decompositionLabels);expect(reopened.semantics).toEqual(semantics);expect(g.points).toEqual(points);
+ delete s.document.presentation.canvas.coordinateSpace;expect(parseDocument(serializeDocument(s.document)).presentation.elements.find(e=>e.id===g.id)!.decompositionLabels).toEqual(g.decompositionLabels);
+});
+it.each([null,{components:{z:[0,0]}},{angles:{x:[1]}},{angles:{y:[1,'2']}},{components:{x:[1,1000001]}},{other:{x:[0,0]}}])('rejects malformed decomposition offsets %j',offsets=>{
+ const s=new DocumentStore(),book=make(s,'Book'),v=saveVector(s,{kind:'velocity',targetId:book,magnitude:{state:'unknown',unit:'m/s'}});(vectorGraphic(s.document,v)! as any).decompositionLabels=offsets;expect(()=>parseDocument(serializeDocument(s.document))).toThrow(/decomposition/);
+});
