@@ -281,13 +281,15 @@ export class DiagramRenderer {
     const vector=this.store.document.semantics.vectors.find(v=>v.id===record.vectorId)!;
     const symbol=this.store.document.semantics.variables.find(v=>v.id===vector.variableId)?.symbol || '';
     const group=new Konva.Group({name:'vector-components',vectorId:vector.id});
+    const obstacles=[...this.labels.values()].map(label=>label.getClientRect({relativeTo:this.stage}));
     for(const projection of projections){
       const x=graphic.x,y=graphic.y;
       group.add(new Konva.Arrow({name:'vector-component',axis:projection.axis,coordinateDirection:projection.direction,points:[x,y,x+projection.dx,y+projection.dy],stroke:record.stroke,fill:record.stroke,strokeWidth:2,dash:[2,5],pointerLength:7,pointerWidth:7}));
       // Append the coordinate axis to the existing participant subscripts.
       const indexed=symbol.endsWith('}')?symbol.slice(0,-1)+','+projection.axis+'}':symbol+'_{'+projection.axis+'}';
       const latex=vectorLatex(indexed),image=await renderMath(latex,16);
-      group.add(new Konva.Image({name:'component-label',axis:projection.axis,math:latex,image,width:image.width/2,height:image.height/2,x:x+projection.dx+8,y:y+projection.dy+8}));
+      const label=new Konva.Image({name:'component-label',axis:projection.axis,math:latex,image,width:image.width/2,height:image.height/2,x:x+projection.dx+8,y:y+projection.dy+8});group.add(label);
+      obstacles.push({x:label.x(),y:label.y(),width:label.width(),height:label.height()});
     }
     if(vector.showAngles!==false)for(const geometry of componentAngleGeometry(graphic,this.store.document)){
       const {start,sweep,axis}=geometry,radius=axis==='x'?32:42;
@@ -295,11 +297,24 @@ export class DiagramRenderer {
       angle.add(new Konva.Shape({name:'angle-arc',axis,stroke:'#735889',strokeWidth:2,
         sceneFunc:(context,shape)=>{context.beginPath();context.arc(0,0,radius,-start,-start-sweep,sweep>0);context.strokeShape(shape);}}));
       const math=componentAngleLabel(this.store.document,vector,axis),image=await renderMath(math,16),mid=start+sweep/2;
-      angle.add(new Konva.Image({name:'angle-label',axis,math,image,width:image.width/2,height:image.height/2,x:(radius+18)*Math.cos(mid)+(Math.cos(mid)>=0?8:-8-image.width/2),y:-(radius+18)*Math.sin(mid)-image.height/4}));
+      const preferred={x:graphic.x+(radius+18)*Math.cos(mid)+(Math.cos(mid)>=0?8:-8-image.width/2),y:graphic.y-(radius+18)*Math.sin(mid)-image.height/4};
+      const position=overlayLabelPosition(preferred,image.width/2,image.height/2,obstacles);
+      obstacles.push({...position,width:image.width/2,height:image.height/2});
+      angle.add(new Konva.Image({name:'angle-label',axis,math,image,width:image.width/2,height:image.height/2,x:position.x-graphic.x,y:position.y-graphic.y}));
       group.add(angle);
     }
     if(revision!==this.componentRevision){group.destroy();return;}
     this.components.add(group);this.components.batchDraw();
   }
   toggleGrid() { const p = this.store.document.presentation; p.grid.visible = !p.grid.visible; this.grid.visible(p.grid.visible); this.store.changed(); this.stage.draw(); }
+}
+
+/** Keep longer numerical labels readable without changing their semantic/arc anchors. */
+function overlayLabelPosition(preferred:{x:number;y:number},width:number,height:number,obstacles:{x:number;y:number;width:number;height:number}[]) {
+  const candidates=[0,-24,24,-48,48,-72,72,-96,96].flatMap(y=>[0,-32,32,-64,64,-96,96].map(x=>({x,y})));
+  candidates.sort((a,b)=>Math.hypot(a.x,a.y)-Math.hypot(b.x,b.y));
+  for(const offset of candidates){const p={x:preferred.x+offset.x,y:preferred.y+offset.y};
+    if(!obstacles.some(r=>p.x<r.x+r.width+6 && p.x+width+6>r.x && p.y<r.y+r.height+6 && p.y+height+6>r.y))return p;
+  }
+  return preferred;
 }
