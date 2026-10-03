@@ -1,3 +1,4 @@
+import {requestDelete} from './delete-ui';
 import { DocumentStore } from './model';
 import { DiagramRenderer } from './renderer';
 import { saveCoordinates, deleteCoordinates } from './coordinates';
@@ -25,6 +26,6 @@ export function initializeCoordinates(store: DocumentStore, renderer: DiagramRen
       await renderer.render();renderer.select(id);dialog.close();
     } catch(error){$('#coordinate-error').textContent=(error as Error).message;}
   });
-  $('#delete-coordinates').addEventListener('click',async()=>{try{deleteCoordinates(store);await renderer.render();dialog.close();}catch(error){$('#coordinate-error').textContent=(error as Error).message;}});
+  $('#delete-coordinates').addEventListener('click',async()=>{try{const c=store.document.semantics.coordinateSystems[0];if(!c||!await requestDelete(store,{kind:'coordinates',id:c.id}))return;await renderer.render();dialog.close();}catch(error){$('#coordinate-error').textContent=(error as Error).message;}});
   return {open};
 }

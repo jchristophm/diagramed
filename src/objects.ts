@@ -1,6 +1,7 @@
+import {deleteSemantic,removeDependencies} from './deletion';
 import { DocumentStore, newGraphic, type Graphic } from './model';
 import {validateRelationships} from './persistence';
-import {assertExpressions,ensureNoReferences} from './expressions';
+import {assertExpressions,references} from './expressions';
 import {physicalConstants} from './constants';
 import { synchronizeSymbols } from './naming';
 import { attachmentPoint } from './geometry';
@@ -19,9 +20,10 @@ export function canonicalSymbol(symbol: string) { return symbol.trim().replace(/
 export type Representation = 'circle' | 'rectangle' | 'point' | 'surface' | 'spring' | 'cable' | 'none';
 export const categoryNames: Record<ObjectCategory,string> = {ordinary:'Ordinary physical object',spatialPoint:'Spatial point',planetSurface:'Planet Surface',spring:'Spring',cable:'String/Cable',chargedPlate:'Charged Plate',fluid:'Fluid'};
 export const categoryProperties: Record<ObjectCategory,PropertyQuantity[]> = {ordinary:['mass','charge','density'],spatialPoint:['charge'],planetSurface:['gravity'],spring:['springConstant','extension'],cable:[],chargedPlate:['surfaceChargeDensity'],fluid:['density']};
+export const intrinsicProperties: Partial<Record<ObjectCategory,PropertyQuantity[]>> = {spring:['springConstant','extension'],fluid:['density'],planetSurface:['gravity'],chargedPlate:['surfaceChargeDensity']};
 export const categoryRepresentations: Record<ObjectCategory,Representation[]> = {ordinary:['circle','rectangle','point','none'],spatialPoint:['point','none'],planetSurface:['surface','none'],spring:['spring','none'],cable:['cable','none'],chargedPlate:['surface','none'],fluid:['surface','none']};
 export function propertySigned(key: PropertyQuantity) { return ['charge','extension','surfaceChargeDensity'].includes(key); }
-export function presetDraft(category: ObjectCategory): ObjectDraft { const properties: ObjectDraft['properties']={}; if(category==='planetSurface')properties.gravity={state:'known',unit:'m/s^2',value:9.8}; if(category==='fluid')properties.density={state:'known',unit:'kg/m^3',value:1000}; return {name:category==='planetSurface'?'Earth':category==='fluid'?'Water':categoryNames[category],category,representation:category==='spatialPoint'?'point':['planetSurface','chargedPlate','fluid'].includes(category)?'surface':category==='spring'?'spring':category==='cable'?'cable':'circle',polarity:'positive',showName:true,showProperties:true,properties}; }
+export function presetDraft(category: ObjectCategory): ObjectDraft { const properties: ObjectDraft['properties']={}; for(const key of intrinsicProperties[category]||[])properties[key]={state:'unknown',unit:propertyDefinitions[key].units[0]}; if(category==='planetSurface')properties.gravity={state:'known',unit:'m/s^2',value:9.8}; if(category==='fluid')properties.density={state:'known',unit:'kg/m^3',value:1000}; return {name:category==='planetSurface'?'Earth':category==='fluid'?'Water':categoryNames[category],category,representation:category==='spatialPoint'?'point':['planetSurface','chargedPlate','fluid'].includes(category)?'surface':category==='spring'?'spring':category==='cable'?'cable':'circle',polarity:'positive',showName:true,showProperties:true,properties}; }
 export const objectPresets = (Object.keys(categoryNames) as ObjectCategory[]).filter(key=>key!=='ordinary').map(key=>({key,...presetDraft(key)}));
 export function setObjectVisibility(store: DocumentStore, id: string, visible: boolean) {
   const graphic = objectGraphic(store, id);
@@ -44,12 +46,13 @@ export function saveObject(store: DocumentStore, draft: ObjectDraft): string {
   const polarity = draft.polarity || existing?.polarity || 'positive';
   if(!['positive','negative'].includes(polarity))throw new Error('Invalid plate polarity.');
   const previousProperties = existing?.properties || {};
+  draft={...draft,properties:draft.properties===undefined?undefined:{...draft.properties}};
+  for(const key of intrinsicProperties[category]||[]){draft.properties??={};if(!draft.properties[key]){const old=next.semantics.variables.find(v=>v.id===previousProperties[key]);draft.properties[key]=old?{...old,unit:old.unit||propertyDefinitions[key].units[0],state:old.state||'unknown'}:presetDraft(category).properties![key];}}
   if (draft.properties !== undefined) {
     const previousIds = new Set(Object.values(previousProperties));
     const definitions: Record<string, string> = {};
     const removedIds = new Set([...previousIds].filter(variableId => !Object.keys(draft.properties!).some(key => previousProperties[key] === variableId)));
-    ensureNoReferences(next,removedIds);
-    if (next.semantics.vectors.some(v => removedIds.has(v.variableId)) || next.semantics.components.some(c => removedIds.has(c.variableId))) throw new Error('This property is referenced by a vector or component. Remove that reference before removing the property.');
+    removeDependencies(next,[...removedIds].map(id=>({kind:'variable' as const,id})));
     if (next.semantics.objects.some(o => o.id !== id && Object.values(o.properties || {}).some(v => previousIds.has(v)))) throw new Error('This property variable is shared by another object. Shared ownership needs to be resolved before editing it.');
     const registry = next.semantics.variables.filter(v => !previousIds.has(v.id));
     for (const [quantity, property] of Object.entries(draft.properties)) {
@@ -69,7 +72,7 @@ export function saveObject(store: DocumentStore, draft: ObjectDraft): string {
       if(key==='surfaceChargeDensity' && property.state==='known' && property.value!==0 && (property.value! < 0)!==(polarity==='negative')) throw new Error('Plate polarity and signed surface charge density must agree.');
       const variable: Variable = { id: previousProperties[key] || property.id || crypto.randomUUID(), ownerObjectId: id, quantity: key, symbol, generatedSymbol: property.generatedSymbol ?? !property.symbol, unit: property.unit, state: property.state };
       if(registry.some(v=>v.id===variable.id))throw new Error('Property variable identity is already used.');
-      if(property.state==='expression')variable.expression=property.expression;
+      if(property.state==='expression'){if(property.expression&&references(property.expression).some(id=>removedIds.has(id)))variable.state='unknown';else variable.expression=property.expression;}
       if (property.state === 'known') variable.value = property.value;
       definitions[key] = variable.id; registry.push(variable);
     }
@@ -103,18 +106,7 @@ export function saveObject(store: DocumentStore, draft: ObjectDraft): string {
   graphic.label = { ...graphic.label, ...(!graphic.label ? {placement:'objectCenter' as const}:{}), showName: draft.showName, showProperties: draft.showProperties, offsetX: graphic.label?.offsetX ?? 0, offsetY: graphic.label?.offsetY ?? (graphic.kind==='surface'?28-graphic.height/2:28) };
   next.metadata.updatedAt = new Date().toISOString(); synchronizeSymbols(next); assertExpressions(next); validateRelationships(next); store.replace(next); return id;
 }
-export function deleteObject(store: DocumentStore, id: string) {
-  const next = structuredClone(store.document);
-  if (next.semantics.interactions.some(i => i.objectIds.includes(id)) || next.semantics.vectors.some(v => v.objectId === id || v.sourceId===id || v.fromId===id || v.toId===id)) throw new Error('Remove this object’s dependent interactions or vectors before deleting it.');
-  const ownedIds = new Set(Object.values(next.semantics.objects.find(o => o.id === id)?.properties || {}));
-  if (next.semantics.objects.some(o => o.id !== id && Object.values(o.properties || {}).some(v => ownedIds.has(v)))) throw new Error('Another object references this property variable. Resolve that reference before deleting the object.');
-  if (next.semantics.vectors.some(v => ownedIds.has(v.variableId)) || next.semantics.components.some(c => ownedIds.has(c.variableId))) throw new Error('Remove dependent variable references before deleting this object.');
-  ensureNoReferences(next,ownedIds);
-  next.semantics.objects = next.semantics.objects.filter(o => o.id !== id);
-  next.semantics.variables = next.semantics.variables.filter(v => !ownedIds.has(v.id));
-  next.presentation.elements = next.presentation.elements.filter(e => e.semanticId !== id);
-  synchronizeSymbols(next); next.metadata.updatedAt = new Date().toISOString(); store.replace(next);
-}
+export function deleteObject(store:DocumentStore,id:string){deleteSemantic(store,{kind:'object',id});}
 export function objectDraft(store: DocumentStore, id?: string): ObjectDraft {
   const object = store.document.semantics.objects.find(o => o.id === id), g = id ? objectGraphic(store, id) : undefined;
   const properties: ObjectDraft['properties'] = {};
@@ -124,4 +116,14 @@ export function objectDraft(store: DocumentStore, id?: string): ObjectDraft {
     if (variable) properties[key as PropertyQuantity] = { id:variable.id,expression:variable.expression,symbol: variable.symbol, generatedSymbol: !!variable.generatedSymbol, unit: variable.unit || propertyDefinitions[key as PropertyQuantity].units[0], state: variable.state||'unknown', value: variable.value };
   }
   return { id, category:object?.category || 'ordinary',polarity:object?.polarity || 'positive', name: object?.name || '', representation: g?.visible === false ? 'none' : (g?.kind as Representation) || 'circle', showName: g?.label?.showName ?? true, showProperties: g?.label?.showProperties ?? true, properties };
+}
+
+/** Older documents acquire missing intrinsic quantities once, retaining existing definitions. */
+export function synchronizeIntrinsicProperties(doc:import('./model').DiagramDocument){
+ let added=false;
+ for(const o of doc.semantics.objects)for(const key of intrinsicProperties[o.category||'ordinary']||[]){
+  if(o.properties?.[key])continue;added=true;const id=crypto.randomUUID(),draft=presetDraft(o.category!).properties![key]!;o.properties={...o.properties,[key]:id};
+  doc.semantics.variables.push({id,ownerObjectId:o.id,quantity:key,symbol:'pending',generatedSymbol:true,...draft});
+ }
+ if(added)synchronizeSymbols(doc);
 }

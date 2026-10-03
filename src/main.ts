@@ -1,3 +1,4 @@
+import {requestDelete,confirmDefinitionRemoval} from './delete-ui';
 import {initializeCoordinates} from './coordinate-ui';
 import {initializeVectors} from './vector-ui';
 import {deleteVector} from './physics';
@@ -49,12 +50,14 @@ function openObject(id?: string) {
   refreshPropertyPreview();
   dialog.showModal();
 }
-$('#delete-object').addEventListener('click',async()=>{if(!editingId||busy)return;busy=true;try{deleteObject(store,editingId);await renderer.render();selectedObjectId=undefined;dialog.close();}catch(error){$('#object-error').textContent=(error as Error).message;}finally{busy=false;}});
+$('#delete-object').addEventListener('click',async()=>{if(!editingId||busy)return;busy=true;try{if(!await requestDelete(store,{kind:'object',id:editingId}))return;await renderer.render();selectedObjectId=undefined;dialog.close();}catch(error){$('#object-error').textContent=(error as Error).message;}finally{busy=false;}});
 $('#cancel-object').addEventListener('click', () => dialog.close());
 $('#object-form').addEventListener('submit', async event => {
   event.preventDefault(); if (busy) return; busy = true;
   try {
-    const id = saveObject(store, { id: editingId,category:$<HTMLSelectElement>('#object-type').value as ObjectCategory,polarity:$<HTMLSelectElement>('#object-polarity').value as 'positive'|'negative', name: $<HTMLInputElement>('#object-name').value, representation: $<HTMLSelectElement>('#object-representation').value as Representation, showName: $<HTMLInputElement>('#show-name').checked, showProperties: $<HTMLInputElement>('#show-properties').checked, properties: readPropertyFields($('#property-fields')) });
+    const candidate=new DocumentStore(store.document);
+    const id = saveObject(candidate, { id: editingId,category:$<HTMLSelectElement>('#object-type').value as ObjectCategory,polarity:$<HTMLSelectElement>('#object-polarity').value as 'positive'|'negative', name: $<HTMLInputElement>('#object-name').value, representation: $<HTMLSelectElement>('#object-representation').value as Representation, showName: $<HTMLInputElement>('#show-name').checked, showProperties: $<HTMLInputElement>('#show-properties').checked, properties: readPropertyFields($('#property-fields')) });
+    if(!await confirmDefinitionRemoval(store.document,candidate.document))return;store.replace(candidate.document);
     await renderer.render(); selectObject(id); dialog.close();
   } catch (error) { $('#object-error').textContent = error instanceof Error ? error.message : String(error); } finally { busy = false; }
 });
@@ -70,7 +73,7 @@ function applyType(category:ObjectCategory){
  showPropertyFields($('#property-fields'),draft.properties,category,store.document);refreshPropertyPreview();
 }
 $<HTMLSelectElement>('#object-type').addEventListener('change',event=>{try{applyType((event.target as HTMLSelectElement).value as ObjectCategory);}catch(error){$('#object-error').textContent=(error as Error).message;}});
-function showCollection() {
+function showCollection(open=true) {
   const host = $('#object-list'); host.replaceChildren();
   if (!store.document.semantics.objects.length) { const empty=document.createElement('p');empty.textContent='No objects yet. Use Object to define one.';host.append(empty); }
   for (const object of store.document.semantics.objects) {
@@ -81,11 +84,11 @@ function showCollection() {
     const visibility=document.createElement('button');visibility.textContent=visible ? 'Hide' : 'Show';visibility.setAttribute('aria-label',`${visible ? 'Hide' : 'Show'} ${object.name}`);
     visibility.addEventListener('click',async()=>{if(busy)return;busy=true;try{setObjectVisibility(store,object.id,!visible);await renderer.render();selectObject(object.id);showCollection();}catch(error){report(error);}finally{busy=false;}});
     const edit=document.createElement('button');edit.textContent='Edit';edit.setAttribute('aria-label',`Edit ${object.name}`);edit.addEventListener('click',()=>{$<HTMLDialogElement>('#collection-dialog').close();selectObject(object.id);openObject(object.id);});
-    const remove=document.createElement('button');remove.textContent='Delete';remove.setAttribute('aria-label',`Delete ${object.name}`);remove.addEventListener('click',async()=>{if(busy)return;busy=true;try{deleteObject(store,object.id);await renderer.render();showCollection();}catch(error){report(error);}finally{busy=false;}});
+    const remove=document.createElement('button');remove.textContent='Delete';remove.setAttribute('aria-label',`Delete ${object.name}`);remove.addEventListener('click',async()=>{if(busy)return;busy=true;try{if(!await requestDelete(store,{kind:'object',id:object.id}))return;await renderer.render();showCollection(false);}catch(error){report(error);}finally{busy=false;}});
     const state=document.createElement('span');state.className='object-state';state.textContent=visible ? 'Visible' : 'Hidden';
     row.append(name,state,visibility,edit,remove);host.append(row);
   }
-  const collection=$<HTMLDialogElement>('#collection-dialog');if(!collection.open)collection.showModal();
+  const collection=$<HTMLDialogElement>('#collection-dialog');if(open&&!collection.open)collection.showModal();
 }
 $('#close-collection').addEventListener('click',()=> $<HTMLDialogElement>('#collection-dialog').close());
 renderer.onEdit = element => {
@@ -103,9 +106,9 @@ $('#legacy-form').addEventListener('submit', async event => {
   catch (error) { report(error); } finally { busy = false; }
 });
 async function removeSelected() {
-  const selected=store.document.presentation.elements.find(e=>e.id===renderer.selectedId);if(selected?.vectorId){deleteVector(store,selected.vectorId);await renderer.render();return;}
+  const selected=store.document.presentation.elements.find(e=>e.id===renderer.selectedId);if(selected?.vectorId){if(!await requestDelete(store,{kind:'vector',id:selected.vectorId}))return;await renderer.render();return;}
   const id = selectedObject();
-  if (id) { deleteObject(store, id); selectedObjectId = undefined; await renderer.render(); }
+  if (id) { if(!await requestDelete(store,{kind:'object',id}))return; selectedObjectId = undefined; await renderer.render(); }
   else {renderer.deleteSelected();await renderer.render();}
 }
 async function action(name: string) {

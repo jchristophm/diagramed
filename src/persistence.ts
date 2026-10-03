@@ -1,5 +1,5 @@
 import { newGraphic, type DiagramDocument } from './model';
-import { canonicalSymbol, propertyDefinitions, propertySigned, categoryNames, categoryProperties } from './objects';
+import { synchronizeIntrinsicProperties, canonicalSymbol, propertyDefinitions, propertySigned, categoryNames, categoryProperties } from './objects';
 import {assertExpressions} from './expressions';
 import {eligibility} from './eligibility';
 import { quantityUnits, isZeroMotionVector, synchronizeMotionPresentation, synchronizeFrictionCoefficients } from './physics';
@@ -104,6 +104,7 @@ export function parseDocument(text: string): DiagramDocument {
   }
   result.version = 3;
   if(d.version!==3)for(const physical of result.semantics.objects){physical.category ??= 'ordinary';}
+  synchronizeIntrinsicProperties(result);
   synchronizeMotionPresentation(result);
   synchronizeFrictionCoefficients(result);
   validateRelationships(result);

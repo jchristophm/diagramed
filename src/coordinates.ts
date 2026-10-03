@@ -1,3 +1,4 @@
+import {deleteSemantic} from './deletion';
 import type { CoordinateSystem } from './semantics';
 import type { Graphic } from './model';
 import { DocumentStore } from './model';
@@ -39,11 +40,7 @@ export function saveCoordinates(store: DocumentStore, draft: Omit<CoordinateSyst
   return system.id;
 }
 export function deleteCoordinates(store: DocumentStore) {
-  clearComponentAngleDefinitions(store.document);
-  store.document.semantics.coordinateSystems = [];
-  store.document.semantics.components = [];
-  for (const graphic of store.document.presentation.elements) if (graphic.vectorId) delete graphic.showComponents;
-  store.changed();
+  const c=store.document.semantics.coordinateSystems[0];if(c)deleteSemantic(store,{kind:'coordinates',id:c.id});
 }
 
 export function clearComponentAngleDefinitions(doc: import('./model').DiagramDocument) {

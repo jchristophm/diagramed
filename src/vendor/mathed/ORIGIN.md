@@ -1,6 +1,9 @@
-This is the reusable Mathed source from jchristophm/mathed, development commit
-f261d6834d381216667a13dc37255f6c5cf897d4. Controller, model, renderer, vocabulary,
-LaTeX generation and styles are unchanged. mathed.ts adds only insertVariable
-and updateVocabulary to its public instance API for host dropdown insertion and
-live vocabulary updates. Diagramed's adapter lives outside this directory.
-The pinned source is bundled locally; Pages needs no runtime external editor.
+Reusable Mathed source pinned to jchristophm/mathed development commit
+19339f1677924b854bae6820af55a56b70f57dc8.
+
+All editor source files and styles in this directory match that upstream source.
+Mathed owns its variable menu, selected autocomplete, compact controls, live
+vocabulary updates and retained-cursor variable insertion. Diagramed supplies
+semantic vocabulary and owns its Save/Cancel modal boundary through the shared
+adapter outside this directory. Pages bundles this source locally and needs no
+runtime external editor or iframe.

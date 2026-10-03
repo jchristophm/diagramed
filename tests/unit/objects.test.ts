@@ -9,8 +9,8 @@ describe('semantic object operations',()=>{
  setObjectVisibility(store,id,false);setObjectVisibility(store,id,true);expect(objectGraphic(store,id)).toEqual(before);
  const center=attachmentPoint(objectGraphic(store,id)!);expect(center.x).toBeCloseTo(80+80*Math.cos(Math.PI/6)-10*Math.sin(Math.PI/6));
  });
- it('refuses deletion while future semantic relationships depend on an object',()=>{
- const store=new DocumentStore(),id=saveObject(store,{name:'Rock',representation:'circle',showName:true,showProperties:true});store.document.semantics.interactions.push({id:'interaction',kind:'contact',objectIds:[id]});const before=structuredClone(store.document);expect(()=>deleteObject(store,id)).toThrow(/dependent/);expect(store.document).toEqual(before);
+ it('cascades deletion of dependent semantic relationships',()=>{
+ const store=new DocumentStore(),id=saveObject(store,{name:'Rock',representation:'circle',showName:true,showProperties:true});store.document.semantics.interactions.push({id:'interaction',kind:'contact',objectIds:[id]});store.load(store.document);const before=structuredClone(store.document);deleteObject(store,id);expect(store.document.semantics.objects).toEqual([]);expect(store.document.semantics.interactions).toEqual([]);store.undo();expect(store.document).toEqual(before);
  });
  it('unknown and known properties have stable variable references; undefined is absent',()=>{
  const store=new DocumentStore();const id=saveObject(store,{name:'Rock',representation:'circle',showName:true,showProperties:true,properties:{mass:{symbol:'m_2',state:'unknown',unit:'kg'}}});

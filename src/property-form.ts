@@ -1,19 +1,20 @@
-import {mountExpression,readExpression,updateExpressionVocabulary} from './expression-ui';
+import {expressionUsesRemovedVariables,focusExpression,mountExpression,readExpression,updateExpressionVocabulary} from './expression-ui';
 import katex from 'katex';
 import {abbreviate,propertySymbol,synchronizeSymbols} from './naming';
 import type {DiagramDocument} from './model';
-import { propertyDefinitions, categoryProperties, type ObjectDraft, type PropertyDraft } from './objects';
+import { intrinsicProperties, presetDraft, propertyDefinitions, categoryProperties, type ObjectDraft, type PropertyDraft } from './objects';
 import type { PropertyQuantity, ObjectCategory } from './semantics';
 /** Form fields are draft state only; the registry is updated on confirmation. */
 export function showPropertyFields(host: HTMLElement, properties: ObjectDraft['properties'] = {}, category: ObjectCategory = 'ordinary',doc?:DiagramDocument) {
   host.replaceChildren();
   for (const [key, definition] of Object.entries(propertyDefinitions)) {
     if (!categoryProperties[category].includes(key as PropertyQuantity)) continue;
-    const property = properties[key as PropertyQuantity];
+    const intrinsic=!!intrinsicProperties[category]?.includes(key as PropertyQuantity);
+    const property = properties[key as PropertyQuantity] || (intrinsic?presetDraft(category).properties![key as PropertyQuantity]:undefined);
     const fieldset = document.createElement('fieldset'); fieldset.dataset.quantity = key;fieldset.dataset.variableId=property?.id||crypto.randomUUID();
     const heading = document.createElement('label'); heading.className = 'check';
-    const enabled = document.createElement('input'); enabled.type = 'checkbox'; enabled.id = `${key}-enabled`; enabled.checked = !!property; enabled.disabled = !categoryProperties[category].includes(key as PropertyQuantity);
-    heading.append(enabled, document.createTextNode(definition.name)); fieldset.append(heading);
+    const enabled = document.createElement('input'); enabled.type = 'checkbox'; enabled.id = `${key}-enabled`; enabled.checked = intrinsic || !!property; enabled.disabled = !categoryProperties[category].includes(key as PropertyQuantity);
+    if(!intrinsic)heading.append(enabled); heading.append(document.createTextNode(definition.name)); fieldset.append(heading);
     const details = document.createElement('div'); details.className = 'property-details';
     const symbol = document.createElement('input'); symbol.id = `${key}-symbol`; symbol.value = property?.symbol || ''; symbol.type='hidden'; symbol.dataset.generated=String(property?.generatedSymbol ?? !property?.symbol); symbol.maxLength = 80; symbol.autocomplete = 'off';
     const state = document.createElement('select'); state.id = `${key}-state`; for (const value of ['unknown', 'known','expression']) { const option=document.createElement('option'); option.value=value; option.textContent=value === 'unknown' ? 'Unknown' : value==='expression'?'Expression':'Known'; state.append(option); } state.value = property?.state || 'unknown';
@@ -28,7 +29,7 @@ export function showPropertyFields(host: HTMLElement, properties: ObjectDraft['p
       symbol.required=false;value.required=enabled.checked && state.value==='known';
       preview.innerHTML=katex.renderToString(symbol.value,{throwOnError:false,trust:false,maxExpand:1000});
     };
-    enabled.addEventListener('change',refresh);state.addEventListener('change',refresh);symbol.addEventListener('input',refresh);refresh();
+    enabled.addEventListener('change',refresh);state.addEventListener('change',()=>{refresh();if(state.value==='expression')focusExpression(expression);});symbol.addEventListener('input',refresh);refresh();
     fieldset.append(details);host.append(fieldset);
   }
 }
@@ -36,7 +37,7 @@ export function readPropertyFields(host: HTMLElement): ObjectDraft['properties']
   const properties: ObjectDraft['properties'] = {};
   for (const fieldset of host.querySelectorAll<HTMLFieldSetElement>('fieldset[data-quantity]')) {
     const key=fieldset.dataset.quantity as PropertyQuantity;
-    if (!fieldset.querySelector<HTMLInputElement>(`#${key}-enabled`)!.checked) continue;
+    if (fieldset.querySelector<HTMLInputElement>(`#${key}-enabled`)?.checked===false) continue;
     const symbol=fieldset.querySelector<HTMLInputElement>(`#${key}-symbol`)!.value.trim();
     try { katex.renderToString(symbol,{throwOnError:true,trust:false,maxExpand:1000}); } catch { throw new Error(`Check the symbol for ${propertyDefinitions[key].name.toLowerCase()}.`); }
     const state=fieldset.querySelector<HTMLSelectElement>(`#${key}-state`)!.value as PropertyDraft['state'];
@@ -56,8 +57,8 @@ export function refreshPropertySymbols(host:HTMLElement,document:DiagramDocument
   if(control.dataset.generated==='true')control.value=propertySymbol(doc,target,key);
   fieldset.querySelector(`#${key}-preview`)!.innerHTML=katex.renderToString(control.value,{throwOnError:false,trust:false,maxExpand:1000});
   const id=fieldset.dataset.variableId!;doc.semantics.variables=doc.semantics.variables.filter(v=>v.id!==id);
-  if(fieldset.querySelector<HTMLInputElement>(`#${key}-enabled`)!.checked)doc.semantics.variables.push({id,symbol:control.value,generatedSymbol:control.dataset.generated==='true',quantity:key,state:'unknown',unit:fieldset.querySelector<HTMLSelectElement>(`#${key}-unit`)!.value,ownerObjectId:target});
+  if(fieldset.querySelector<HTMLInputElement>(`#${key}-enabled`)?.checked!==false)doc.semantics.variables.push({id,symbol:control.value,generatedSymbol:control.dataset.generated==='true',quantity:key,state:'unknown',unit:fieldset.querySelector<HTMLSelectElement>(`#${key}-unit`)!.value,ownerObjectId:target});
  }
  synchronizeSymbols(doc);
- for(const fieldset of fields){const key=fieldset.dataset.quantity!,control=fieldset.querySelector<HTMLInputElement>(`#${key}-symbol`)!,v=doc.semantics.variables.find(v=>v.id===fieldset.dataset.variableId);if(v&&control.dataset.generated==='true')control.value=v.symbol;fieldset.querySelector(`#${key}-preview`)!.innerHTML=katex.renderToString(control.value,{throwOnError:false,trust:false,maxExpand:1000});updateExpressionVocabulary(fieldset.querySelector(`#${key}-expression`)!,doc);}
+ for(const fieldset of fields){const key=fieldset.dataset.quantity!,control=fieldset.querySelector<HTMLInputElement>(`#${key}-symbol`)!,v=doc.semantics.variables.find(v=>v.id===fieldset.dataset.variableId);if(v&&control.dataset.generated==='true')control.value=v.symbol;fieldset.querySelector(`#${key}-preview`)!.innerHTML=katex.renderToString(control.value,{throwOnError:false,trust:false,maxExpand:1000});const expression=fieldset.querySelector<HTMLElement>(`#${key}-expression`)!;if(expressionUsesRemovedVariables(expression,doc)){const state=fieldset.querySelector<HTMLSelectElement>(`#${key}-state`)!;if(state.value==='expression'){state.value='unknown';state.dispatchEvent(new Event('change'));}}updateExpressionVocabulary(expression,doc);}
 }

@@ -155,12 +155,6 @@ fieldset { margin:12px 0; padding:0 12px 12px; border:1px solid #ddd; border-rad
 /* Embedded Mathed retains its own controls and editing behavior. */
 dialog .component-angle-row {display:flex;align-items:center;gap:.4rem;flex-wrap:nowrap;}
 dialog .component-angle-row input {width:5.5rem;min-width:0;flex:0 0 5.5rem;}
-.expression-vocabulary {margin:8px 0;position:relative;}
-.expression-vocabulary summary {box-sizing:border-box;display:inline-block;cursor:pointer;border:1px solid #c9d1dc;border-radius:7px;padding:8px 12px;min-height:44px;}
-.expression-vocabulary summary::after {content:' ▾';}
-.expression-variable-menu {display:flex;flex-direction:column;max-height:220px;overflow:auto;border:1px solid #c9d1dc;padding:4px;background:white;}
-.expression-variable-menu button {text-align:left;min-height:44px;}
-.expression-vocabulary:not([open]) .expression-variable-menu {display:none;}
 .mathed-editor .me-field {min-height:80px;}
 dialog .mathed-editor .me-input {width:1px;height:1px;padding:0;margin:0;border:0;}
 dialog .mathed-editor select {display:inline-block;width:auto;margin:0;}
